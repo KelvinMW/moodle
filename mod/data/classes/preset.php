@@ -18,6 +18,8 @@ namespace mod_data;
 
 use core_component;
 use invalid_parameter_exception;
+use data_field_base;
+use moodle_exception;
 use SimpleXMLElement;
 use stdClass;
 use stored_file;
@@ -49,6 +51,12 @@ class preset {
     /** @var stored_file For saved presets that's the file object for the root folder. It's null for plugins or for presets that
      *  haven't been saved yet. */
     public $storedfile;
+
+    /** @var array|null the field sample instances. */
+    private $fields = null;
+
+    /** @var stdClass|null the preset.xml parsed information. */
+    protected $xmlinfo = null;
 
     /**
      * Class constructor.
@@ -149,6 +157,38 @@ class preset {
         }
 
         return new self($manager, $isplugin, $presetname, $presetname, $description, $file);
+    }
+
+    /**
+     * Create a preset instance from the preset fullname.
+     *
+     * The preset fullname is a concatenation of userid and pluginname|presetname used by most
+     * preset pages. Plugins uses userid zero while preset instances has the owner as identifier.
+     *
+     * This method will throw an exception if the preset instance has a different userid thant the one
+     * from the $fullname. However, it won't check the current user capabilities.
+     *
+     * @param manager $manager the current instance manager
+     * @param string $fullname the preset full name
+     * @return preset
+     */
+    public static function create_from_fullname(manager $manager, string $fullname): self {
+        $parts = explode('/', $fullname, 2);
+        $userid = empty($parts[0]) ? 0 : (int)$parts[0];
+        $shortname = empty($parts[1]) ? '' : $parts[1];
+
+        // Shortnames with userid zero are plugins.
+        if ($userid == 0) {
+            return static::create_from_plugin($manager, $shortname);
+        }
+
+        $path = '/' . $shortname . '/';
+        $file = static::get_file($path, '.');
+        $result = static::create_from_storedfile($manager, $file);
+        if ($result->get_userid() != $userid) {
+            throw new moodle_exception('invalidpreset', manager::PLUGINNAME);
+        }
+        return $result;
     }
 
     /**
@@ -270,7 +310,7 @@ class preset {
         $instance = $this->manager->get_instance();
         foreach (manager::TEMPLATES_LIST as $templatename => $templatefilename) {
             $templatefile = fopen("$exportdir/$templatefilename", 'w');
-            fwrite($templatefile, $instance->{$templatename});
+            fwrite($templatefile, $instance->{$templatename} ?? '');
             fclose($templatefile);
         }
 
@@ -303,14 +343,27 @@ class preset {
     /**
      * Return the preset author.
      *
-     * @return int|null
+     * Preset plugins do not have any user id.
+     *
+     * @return int|null the userid or null if it is a plugin
      */
     public function get_userid(): ?int {
         if (!empty($this->storedfile)) {
             return $this->storedfile->get_userid();
         }
-
         return null;
+    }
+
+    /**
+     * Return the preset fullname.
+     *
+     * Preset fullname is used mostly for urls.
+     *
+     * @return string the preset fullname
+     */
+    public function get_fullname(): string {
+        $userid = $this->get_userid() ?? '0';
+        return "{$userid}/{$this->shortname}";
     }
 
     /**
@@ -328,6 +381,175 @@ class preset {
         }
 
         return '/' . $this->name . '/';
+    }
+
+    /**
+     * Return the field instances of the preset.
+     *
+     * @param bool $forpreview if the fields are only for preview
+     * @return data_field_base[]  and array with field objects
+     */
+    public function get_fields(bool $forpreview = false): array {
+        if ($this->fields !== null) {
+            return $this->fields;
+        }
+        // Parse the preset.xml file.
+        $this->load_preset_xml();
+        if (empty($this->xmlinfo) || empty($this->xmlinfo->field)) {
+            $this->fields = [];
+            return $this->fields;
+        }
+        // Generate field instances.
+        $result = [];
+        foreach ($this->xmlinfo->field as $fieldinfo) {
+            $result[(string) $fieldinfo->name] = $this->get_field_instance($fieldinfo, count($result), $forpreview);
+        }
+        $this->fields = $result;
+        return $result;
+    }
+
+    /**
+     * Convert a preset.xml field data into field instance.
+     *
+     * @param SimpleXMLElement $fieldinfo the field xml information
+     * @param int $id the field id to use
+     * @param bool $forpreview if the field should support preview
+     * @return data_field_base the field instance
+     */
+    private function get_field_instance(
+        SimpleXMLElement $fieldinfo,
+        int $id = 0,
+        bool $forpreview = false
+    ): data_field_base {
+        global $CFG; // Some old field plugins require $CFG to be in the  scope.
+
+        $fieldrecord = $this->get_fake_field_record($fieldinfo, $id);
+        $instance = $this->manager->get_instance();
+        $cm = $this->manager->get_coursemodule();
+
+        // Include the plugin.
+        $filepath = "{$this->manager->path}/field/{$fieldrecord->type}/field.class.php";
+        if (file_exists($filepath)) {
+            require_once($filepath);
+        }
+        $classname = "data_field_{$fieldrecord->type}";
+        $newfield = null;
+        if (class_exists($classname)) {
+            $newfield = new $classname($fieldrecord, $instance, $cm);
+            if ($forpreview && !$newfield->supports_preview()) {
+                $newfield = new data_field_base($fieldrecord, $instance, $cm);
+            }
+        } else {
+            $newfield = new data_field_base($fieldrecord, $instance, $cm);
+        }
+        if ($forpreview) {
+            $newfield->set_preview(true);
+        }
+        return $newfield;
+    }
+
+    /**
+     * Generate a fake field record fomr the preset.xml field data.
+     *
+     * @param SimpleXMLElement $fieldinfo the field xml information
+     * @param int $id the field id to use
+     * @return stdClass the fake record
+     */
+    private function get_fake_field_record(SimpleXMLElement $fieldinfo, int $id = 0): stdClass {
+        $instance = $this->manager->get_instance();
+        // Generate stub record.
+        $fieldrecord = (object)[
+            'id' => $id,
+            'dataid' => $instance->id,
+            'type' => (string) $fieldinfo->type,
+            'name' => (string) $fieldinfo->name,
+            'description' => (string) $fieldinfo->description ?? '',
+            'required' => (int) $fieldinfo->required ?? 0,
+        ];
+        for ($i = 1; $i < 11; $i++) {
+            $name = "param{$i}";
+            $fieldrecord->{$name} = null;
+            if (property_exists($fieldinfo, $name)) {
+                $fieldrecord->{$name} = (string) $fieldinfo->{$name};
+            }
+        }
+        return $fieldrecord;
+    }
+
+    /**
+     * Return sample entries to preview this preset.
+     *
+     * @param int $count the number of entries to generate.
+     * @return array of sample entries
+     */
+    public function get_sample_entries(int $count = 1): array {
+        global $USER;
+        $fields = $this->get_fields();
+        $instance = $this->manager->get_instance();
+        $entries = [];
+        for ($current = 1; $current <= $count; $current++) {
+            $entry = (object)[
+                'id' => $current,
+                'userid' => $USER->id,
+                'groupid' => 0,
+                'dataid' => $instance->id,
+                'timecreated' => time(),
+                'timemodified' => time(),
+                'approved' => 1,
+            ];
+            // Add all necessary user fields.
+            $userfieldsapi = \core_user\fields::for_userpic()->excluding('id');
+            $fields = $userfieldsapi->get_required_fields();
+            foreach ($fields as $field) {
+                $entry->{$field} = $USER->{$field};
+            }
+            $entries[$current] = $entry;
+        }
+        return $entries;
+    }
+
+    /**
+     * Load all the information from the preset.xml.
+     */
+    protected function load_preset_xml() {
+        if (!empty($this->xmlinfo)) {
+            return;
+        }
+        // Load everything from the XML.
+        $presetxml = null;
+        if ($this->isplugin) {
+            $path = $this->manager->path . '/preset/' . $this->shortname . '/preset.xml';
+            $presetxml = file_get_contents($path);
+        } else {
+            $presetxml = static::get_content_from_file($this->storedfile->get_filepath(), 'preset.xml');
+        }
+        $this->xmlinfo = simplexml_load_string($presetxml);
+    }
+
+    /**
+     * Return the template content from the preset.
+     *
+     * @param string $templatename the template name
+     * @return string the template content
+     */
+    public function get_template_content(string $templatename): string {
+        $filename = "{$templatename}.html";
+        if ($templatename == 'csstemplate') {
+            $filename = "{$templatename}.css";
+        }
+        if ($templatename == 'jstemplate') {
+            $filename = "{$templatename}.js";
+        }
+        if ($this->isplugin) {
+            $path = $this->manager->path . '/preset/' . $this->shortname . '/' . $filename;
+            $result = file_get_contents($path);
+        } else {
+            $result = static::get_content_from_file($this->storedfile->get_filepath(), $filename);
+        }
+        if (empty($result)) {
+            return '';
+        }
+        return $result;
     }
 
     /**
@@ -354,7 +576,11 @@ class preset {
      * @return string The plugin preset name to display.
      */
     public static function get_name_from_plugin(string $pluginname): string {
-        if (get_string_manager()->string_exists('modulename', 'datapreset_'.$pluginname)) {
+        $pos = strpos($pluginname, '/');
+        if ($pos !== false) {
+             $pluginname = substr($pluginname, $pos + 1);
+        }
+        if (!strpos(trim($pluginname), ' ') && get_string_manager()->string_exists('modulename', 'datapreset_'.$pluginname)) {
             return get_string('modulename', 'datapreset_'.$pluginname);
         } else {
             return $pluginname;
@@ -484,7 +710,7 @@ class preset {
         $presetxmldata = "<preset>\n\n";
 
         // Add description.
-        $presetxmldata .= '<description>' . htmlspecialchars($this->description) . "</description>\n\n";
+        $presetxmldata .= '<description>' . htmlspecialchars($this->description ?? '', ENT_COMPAT) . "</description>\n\n";
 
         // Add settings.
         // Raw settings are not preprocessed during saving of presets.
@@ -503,12 +729,12 @@ class preset {
         $instance = $this->manager->get_instance();
         // First, settings that do not require any conversion.
         foreach ($rawsettings as $setting) {
-            $presetxmldata .= "<$setting>" . htmlspecialchars($instance->$setting) . "</$setting>\n";
+            $presetxmldata .= "<$setting>" . htmlspecialchars($instance->$setting, ENT_COMPAT) . "</$setting>\n";
         }
 
         // Now specific settings.
         if ($instance->defaultsort > 0 && $sortfield = data_get_field_from_id($instance->defaultsort, $instance)) {
-            $presetxmldata .= '<defaultsort>' . htmlspecialchars($sortfield->field->name) . "</defaultsort>\n";
+            $presetxmldata .= '<defaultsort>' . htmlspecialchars($sortfield->field->name, ENT_COMPAT) . "</defaultsort>\n";
         } else {
             $presetxmldata .= "<defaultsort>0</defaultsort>\n";
         }
@@ -522,7 +748,7 @@ class preset {
                 $presetxmldata .= "<field>\n";
                 foreach ($field as $key => $value) {
                     if ($value != '' && $key != 'id' && $key != 'dataid') {
-                        $presetxmldata .= "<$key>" . htmlspecialchars($value) . "</$key>\n";
+                        $presetxmldata .= "<$key>" . htmlspecialchars($value, ENT_COMPAT) . "</$key>\n";
                     }
                 }
                 $presetxmldata .= "</field>\n\n";
@@ -534,5 +760,68 @@ class preset {
         $preset = new SimpleXMLElement($presetxmldata);
 
         return $preset->asXML();
+    }
+
+    /**
+     * Checks to see if the user has permission to manage the preset.
+     *
+     * @return bool  Returns true if the user can manage this preset, false otherwise.
+     */
+    public function can_manage(): bool {
+        global $USER;
+
+        if ($this->isplugin) {
+            // Plugin presets can't be removed or edited.
+            return false;
+        }
+
+        $context = $this->manager->get_context();
+        if (has_capability('mod/data:manageuserpresets', $context)) {
+            return true;
+        } else {
+            if ($this->get_userid() == $USER->id) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Deletes all files related to a saved preset.
+     *
+     * @return bool True if the preset is a saved preset and the file exists in the file system; false otherwise.
+     */
+    public function delete(): bool {
+        if ($this->isplugin) {
+            // Plugin presets can't be removed.
+            return false;
+        }
+
+        $exists = false;
+        $filepath = $this->get_path();
+
+        $dir = self::get_file($filepath, '.');
+        if (!empty($dir)) {
+            $exists = true;
+
+            $fs = get_file_storage();
+            $files = $fs->get_directory_files(
+                $dir->get_contextid(),
+                $dir->get_component(),
+                $dir->get_filearea(),
+                $dir->get_itemid(),
+                $filepath
+            );
+            if (!empty($files)) {
+                foreach ($files as $file) {
+                    $file->delete();
+                }
+            }
+            $dir->delete();
+            // Reseting storedfile property because the file has been removed.
+            $this->storedfile = null;
+        }
+
+        return $exists;
     }
 }

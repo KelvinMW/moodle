@@ -76,6 +76,11 @@ class renderer_base {
     private $mustache;
 
     /**
+     * @var array $templatecache The mustache template cache.
+     */
+    protected $templatecache = [];
+
+    /**
      * Return an instance of the mustache class.
      *
      * @since 2.9
@@ -135,7 +140,10 @@ class renderer_base {
                 // Don't allow the JavaScript helper to be executed from within another
                 // helper. If it's allowed it can be used by users to inject malicious
                 // JS into the page.
-                'disallowednestedhelpers' => ['js']));
+                'disallowednestedhelpers' => ['js'],
+                // Disable lambda rendering - content in helpers is already rendered, no need to render it again.
+                'disable_lambda_rendering' => true,
+            ));
 
         }
 
@@ -171,7 +179,6 @@ class renderer_base {
      * @return string|boolean
      */
     public function render_from_template($templatename, $context) {
-        static $templatecache = array();
         $mustache = $this->get_mustache();
 
         try {
@@ -187,12 +194,12 @@ class renderer_base {
         // e.g. aria attributes that only work with id attributes and must be
         // unique in a page.
         $mustache->addHelper('uniqid', new \core\output\mustache_uniqid_helper());
-        if (isset($templatecache[$templatename])) {
-            $template = $templatecache[$templatename];
+        if (isset($this->templatecache[$templatename])) {
+            $template = $this->templatecache[$templatename];
         } else {
             try {
                 $template = $mustache->loadTemplate($templatename);
-                $templatecache[$templatename] = $template;
+                $this->templatecache[$templatename] = $template;
             } catch (Mustache_Exception_UnknownTemplateException $e) {
                 throw new moodle_exception('Unknown template: ' . $templatename);
             }
@@ -1504,9 +1511,9 @@ class core_renderer extends renderer_base {
 
         // Provide some performance info if required
         $performanceinfo = '';
-        if (defined('MDL_PERF') || (!empty($CFG->perfdebug) and $CFG->perfdebug > 7)) {
+        if ((defined('MDL_PERF') && MDL_PERF) || (!empty($CFG->perfdebug) && $CFG->perfdebug > 7)) {
             $perf = get_performance_info();
-            if (defined('MDL_PERFTOFOOT') || debugging() || $CFG->perfdebug > 7) {
+            if ((defined('MDL_PERFTOFOOT') && MDL_PERFTOFOOT) || debugging() || $CFG->perfdebug > 7) {
                 $performanceinfo = $perf['html'];
             }
         }
@@ -1666,6 +1673,30 @@ class core_renderer extends renderer_base {
         $pattern->setColor($color);
         $pattern->patternbyid($id);
         return $pattern->datauri();
+    }
+
+    /**
+     * Get the course pattern image URL.
+     *
+     * @param context_course $context course context object
+     * @return string URL of the course pattern image in SVG format
+     */
+    public function get_generated_url_for_course(context_course $context): string {
+        return moodle_url::make_pluginfile_url($context->id, 'course', 'generated', null, '/', 'course.svg')->out();
+    }
+
+    /**
+     * Get the course pattern in SVG format to show on a course card.
+     *
+     * @param int $id id to use when generating the pattern
+     * @return string SVG file contents
+     */
+    public function get_generated_svg_for_id(int $id): string {
+        $color = $this->get_generated_color_for_id($id);
+        $pattern = new \core_geopattern();
+        $pattern->setColor($color);
+        $pattern->patternbyid($id);
+        return $pattern->toSVG();
     }
 
     /**
@@ -2048,12 +2079,16 @@ class core_renderer extends renderer_base {
         $displayoptions['cancelstr'] = $displayoptions['cancelstr'] ?? get_string('cancel');
 
         if ($continue instanceof single_button) {
-            // ok
-            $continue->primary = true;
+            // Continue button should be primary if set to secondary type as it is the fefault.
+            if ($continue->type === single_button::BUTTON_SECONDARY) {
+                $continue->type = single_button::BUTTON_PRIMARY;
+            }
         } else if (is_string($continue)) {
-            $continue = new single_button(new moodle_url($continue), $displayoptions['continuestr'], 'post', true);
+            $continue = new single_button(new moodle_url($continue), $displayoptions['continuestr'], 'post',
+                $displayoptions['type'] ?? single_button::BUTTON_PRIMARY);
         } else if ($continue instanceof moodle_url) {
-            $continue = new single_button($continue, $displayoptions['continuestr'], 'post', true);
+            $continue = new single_button($continue, $displayoptions['continuestr'], 'post',
+                $displayoptions['type'] ?? single_button::BUTTON_PRIMARY);
         } else {
             throw new coding_exception('The continue param to $OUTPUT->confirm() must be either a URL (string/moodle_url) or a single_button instance.');
         }
@@ -3117,7 +3152,7 @@ EOD;
         if (!($url instanceof moodle_url)) {
             $url = new moodle_url($url);
         }
-        $button = new single_button($url, get_string('continue'), 'get', true);
+        $button = new single_button($url, get_string('continue'), 'get', single_button::BUTTON_PRIMARY);
         $button->class = 'continuebutton';
 
         return $this->render($button);
@@ -3162,10 +3197,11 @@ EOD;
      * @param string $urlvar URL parameter name for this initial.
      * @param string $url URL object.
      * @param array $alpha of letters in the alphabet.
+     * @param bool $minirender Return a trimmed down view of the initials bar.
      * @return string the HTML to output.
      */
-    public function initials_bar($current, $class, $title, $urlvar, $url, $alpha = null) {
-        $ib = new initials_bar($current, $class, $title, $urlvar, $url, $alpha);
+    public function initials_bar($current, $class, $title, $urlvar, $url, $alpha = null, bool $minirender = false) {
+        $ib = new initials_bar($current, $class, $title, $urlvar, $url, $alpha, $minirender);
         return $this->render($ib);
     }
 
@@ -4192,6 +4228,14 @@ EOD;
     public function supportemail(array $customattribs = []): string {
         global $CFG;
 
+        // Do not provide a link to contact site support if it is unavailable to this user. This would be where the site has
+        // disabled support, or limited it to authenticated users and the current user is a guest or not logged in.
+        if (!isset($CFG->supportavailability) ||
+                $CFG->supportavailability == CONTACT_SUPPORT_DISABLED ||
+                ($CFG->supportavailability == CONTACT_SUPPORT_AUTHENTICATED && (!isloggedin() || isguestuser()))) {
+            return '';
+        }
+
         $label = get_string('contactsitesupport', 'admin');
         $icon = $this->pix_icon('t/email', '');
         $content = $icon . $label;
@@ -4224,7 +4268,9 @@ EOD;
 
         $liferingicon = $this->pix_icon('t/life-ring', '', 'moodle', ['class' => 'fa fa-life-ring']);
         $newwindowicon = $this->pix_icon('i/externallink', get_string('opensinnewwindow'), 'moodle', ['class' => 'ml-1']);
-        $link = 'https://moodle.com/help/?utm_source=CTA-banner&utm_medium=platform&utm_campaign=name~Moodle4+cat~lms+mp~no';
+        $link = !empty($CFG->servicespage)
+            ? $CFG->servicespage
+            : 'https://moodle.com/help/?utm_source=CTA-banner&utm_medium=platform&utm_campaign=name~Moodle4+cat~lms+mp~no';
         $content = $liferingicon . get_string('moodleservicesandsupport') . $newwindowicon;
 
         return html_writer::tag('a', $content, ['target' => '_blank', 'href' => $link]);
@@ -4266,7 +4312,17 @@ EOD;
      * @return moodle_url The moodle_url for the favicon
      */
     public function favicon() {
-        return $this->image_url('favicon', 'theme');
+        $logo = null;
+        if (!during_initial_install()) {
+            $logo = get_config('core_admin', 'favicon');
+        }
+        if (empty($logo)) {
+            return $this->image_url('favicon', 'theme');
+        }
+
+        // Use $CFG->themerev to prevent browser caching when the file changes.
+        return moodle_url::make_pluginfile_url(context_system::instance()->id, 'core_admin', 'favicon', '64x64/',
+            theme_get_revision(), $logo);
     }
 
     /**
@@ -5545,11 +5601,13 @@ class core_renderer_maintenance extends core_renderer {
         // We need plain styling of confirm boxes on upgrade because we don't know which stylesheet we have (it could be
         // from any previous version of Moodle).
         if ($continue instanceof single_button) {
-            $continue->primary = true;
+            $continue->type = single_button::BUTTON_PRIMARY;
         } else if (is_string($continue)) {
-            $continue = new single_button(new moodle_url($continue), get_string('continue'), 'post', true);
+            $continue = new single_button(new moodle_url($continue), get_string('continue'), 'post',
+                $displayoptions['type'] ?? single_button::BUTTON_PRIMARY);
         } else if ($continue instanceof moodle_url) {
-            $continue = new single_button($continue, get_string('continue'), 'post', true);
+            $continue = new single_button($continue, get_string('continue'), 'post',
+                $displayoptions['type'] ?? single_button::BUTTON_PRIMARY);
         } else {
             throw new coding_exception('The continue param to $OUTPUT->confirm() must be either a URL' .
                                        ' (string/moodle_url) or a single_button instance.');

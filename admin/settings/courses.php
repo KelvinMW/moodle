@@ -22,6 +22,10 @@
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+defined('MOODLE_INTERNAL') || die();
+
+require_once($CFG->libdir . '/pdflib.php');
+
 use core_admin\local\settings\filesize;
 
 $capabilities = array(
@@ -174,6 +178,19 @@ if ($hassiteconfig or has_any_capability($capabilities, $systemcontext)) {
     $temp->add(new admin_setting_configselect('moodlecourse/maxbytes', new lang_string('maximumupload'),
         new lang_string('coursehelpmaximumupload'), key($choices), $choices));
 
+    if (!empty($CFG->enablepdfexportfont)) {
+        $pdf = new \pdf;
+        $fontlist = $pdf->get_export_fontlist();
+        // Show the option if the font is defined more than one.
+        if (count($fontlist) > 1) {
+            $temp->add(new admin_setting_configselect('moodlecourse/pdfexportfont',
+                new lang_string('pdfexportfont', 'course'),
+                new lang_string('pdfexportfont_help', 'course'),
+                'freesans', $fontlist
+            ));
+        }
+    }
+
     // Completion tracking.
     $temp->add(new admin_setting_heading('progress', new lang_string('completion','completion'), ''));
     $temp->add(new admin_setting_configselect('moodlecourse/enablecompletion', new lang_string('completion', 'completion'),
@@ -243,8 +260,11 @@ if ($hassiteconfig or has_any_capability($capabilities, $systemcontext)) {
             'activitychoosertabmode',
             new lang_string('activitychoosertabmode', 'course'),
             new lang_string('activitychoosertabmode_desc', 'course'),
-            0,
+            3,
             [
+                3 => new lang_string('activitychoosertabmodefour', 'course'),
+                4 => new lang_string('activitychoosertabmodefive', 'course'),
+                5 => new lang_string('activitychoosertabmodesix', 'course'),
                 0 => new lang_string('activitychoosertabmodeone', 'course'),
                 1 => new lang_string('activitychoosertabmodetwo', 'course'),
                 2 => new lang_string('activitychoosertabmodethree', 'course'),
@@ -477,7 +497,8 @@ if ($hassiteconfig or has_any_capability($capabilities, $systemcontext)) {
     $temp->add(new admin_setting_heading('automatedsettings', new lang_string('automatedsettings','backup'), new lang_string('recyclebin_desc', 'backup')));
     $temp->add(new admin_setting_configcheckbox('backup/backup_auto_users', new lang_string('generalusers', 'backup'), new lang_string('configgeneralusers', 'backup'), 1));
     $temp->add(new admin_setting_configcheckbox('backup/backup_auto_role_assignments', new lang_string('generalroleassignments','backup'), new lang_string('configgeneralroleassignments','backup'), 1));
-    $temp->add(new admin_setting_configcheckbox('backup/backup_auto_activities', new lang_string('generalactivities','backup'), new lang_string('configgeneralactivities','backup'), 1));
+    $temp->add(new admin_setting_configcheckbox('backup/backup_auto_activities', new lang_string('generalactivities', 'backup'),
+        new lang_string('backupautoactivitiesdescription', 'backup'), 1));
     $temp->add(new admin_setting_configcheckbox('backup/backup_auto_blocks', new lang_string('generalblocks','backup'), new lang_string('configgeneralblocks','backup'), 1));
     $temp->add(new admin_setting_configcheckbox(
             'backup/backup_auto_files',

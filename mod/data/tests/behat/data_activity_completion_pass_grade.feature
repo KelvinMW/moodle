@@ -48,12 +48,11 @@ Feature: Completion pass grade
       | completionentriesenabled | 1                                                 |
       | completionentries        | 2                                                 |
     And I press "Save and display"
-    And I add a "Text input" field to "Music history" database and I fill the form with:
+    And I add a "Short text" field to "Music history" database and I fill the form with:
       | Field name | Instrument types |
-    And I navigate to "Templates" in current page administration
-    And I press "Save template"
     And I log out
 
+  @javascript
   Scenario: View automatic completion items as a teacher
     Given I am on the "Music history" "data activity" page logged in as teacher1
 #   We add an entry to let the user change to a different view.

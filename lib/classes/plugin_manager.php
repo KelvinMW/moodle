@@ -25,12 +25,6 @@
  * @copyright  2011 David Mudrak <david@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
-defined('MOODLE_INTERNAL') || die();
-
-/**
- * Singleton class providing general plugins management functionality.
- */
 class core_plugin_manager {
 
     /** the plugin is shipped with standard Moodle distribution */
@@ -1651,7 +1645,7 @@ class core_plugin_manager {
         }
 
         // To be able to remove the plugin folder, its parent must be writable, too.
-        if (!is_writable(dirname($pluginfo->rootdir))) {
+        if (!isset($pluginfo->rootdir) || !is_writable(dirname($pluginfo->rootdir))) {
             return false;
         }
 
@@ -1729,7 +1723,8 @@ class core_plugin_manager {
             'qformat' => array('blackboard', 'learnwise', 'examview'),
             'auth' => array('radius', 'fc', 'nntp', 'pam', 'pop3', 'imap'),
             'block' => array('course_overview', 'messages', 'community', 'participants', 'quiz_results'),
-            'cachestore' => array('memcache'),
+            'cachestore' => array('memcache', 'memcached', 'mongodb'),
+            'editor' => array('tinymce'),
             'enrol' => array('authorize'),
             'filter' => array('censor'),
             'media' => array('swf'),
@@ -1739,13 +1734,17 @@ class core_plugin_manager {
             'quizaccess' => array('safebrowser'),
             'report' => array('search'),
             'repository' => array('alfresco', 'picasa', 'skydrive', 'boxnet'),
-            'tinymce' => array('dragmath'),
+            'tinymce' => array('dragmath', 'ctrlhelp', 'managefiles', 'moodleemoticon', 'moodleimage',
+                'moodlemedia', 'moodlenolink', 'pdw', 'spellchecker', 'wrap'
+            ),
+
             'tool' => array('bloglevelupgrade', 'qeupgradehelper', 'timezoneimport', 'assignmentupgrade', 'health'),
             'theme' => array('bootstrapbase', 'clean', 'more', 'afterburner', 'anomaly', 'arialist', 'base',
                 'binarius', 'boxxie', 'brick', 'canvas', 'formal_white', 'formfactor', 'fusion', 'leatherbound',
                 'magazine', 'mymobile', 'nimble', 'nonzero', 'overlay', 'serenity', 'sky_high', 'splash',
                 'standard', 'standardold'),
-            'webservice' => array('amf'),
+            'logstore' => ['legacy'],
+            'webservice' => array('amf', 'xmlrpc'),
         );
 
         if (!isset($plugins[$type])) {
@@ -1821,7 +1820,7 @@ class core_plugin_manager {
             ),
 
             'cachestore' => array(
-                'file', 'memcached', 'mongodb', 'session', 'static', 'apcu', 'redis'
+                'file', 'session', 'static', 'apcu', 'redis'
             ),
 
             'calendartype' => array(
@@ -1850,7 +1849,10 @@ class core_plugin_manager {
             ),
 
             'datapreset' => array(
-                'imagegallery'
+                'imagegallery',
+                'journal',
+                'proposals',
+                'resources',
             ),
 
             'fileconverter' => array(
@@ -1858,7 +1860,7 @@ class core_plugin_manager {
             ),
 
             'editor' => array(
-                'atto', 'textarea', 'tinymce'
+                'atto', 'textarea', 'tiny',
             ),
 
             'enrol' => array(
@@ -1890,7 +1892,7 @@ class core_plugin_manager {
             ),
 
             'gradereport' => array(
-                'grader', 'history', 'outcomes', 'overview', 'user', 'singleview'
+                'grader', 'history', 'outcomes', 'overview', 'user', 'singleview', 'summary'
             ),
 
             'gradingform' => array(
@@ -1905,7 +1907,7 @@ class core_plugin_manager {
             ),
 
             'logstore' => array(
-                'database', 'legacy', 'standard',
+                'database', 'standard',
             ),
 
             'ltiservice' => array(
@@ -2025,10 +2027,15 @@ class core_plugin_manager {
                 'objectives'
             ),
 
-            'tinymce' => array(
-                'ctrlhelp', 'managefiles', 'moodleemoticon', 'moodleimage',
-                'moodlemedia', 'moodlenolink', 'pdw', 'spellchecker', 'wrap'
-            ),
+            'tiny' => [
+                'accessibilitychecker',
+                'autosave',
+                'equation',
+                'h5p',
+                'media',
+                'recordrtc',
+                'link'
+            ],
 
             'theme' => array(
                 'boost', 'classic'
@@ -2044,7 +2051,7 @@ class core_plugin_manager {
             ),
 
             'webservice' => array(
-                'rest', 'soap', 'xmlrpc'
+                'rest', 'soap'
             ),
 
             'workshopallocation' => array(

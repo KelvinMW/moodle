@@ -586,7 +586,7 @@ abstract class user_selector_base {
      */
     protected function output_optgroup($groupname, $users, $select) {
         if (!empty($users)) {
-            $output = '  <optgroup label="' . htmlspecialchars($groupname) . ' (' . count($users) . ')">' . "\n";
+            $output = '  <optgroup label="' . htmlspecialchars($groupname, ENT_COMPAT) . ' (' . count($users) . ')">' . "\n";
             foreach ($users as $user) {
                 $attributes = '';
                 if (!empty($user->disabled)) {
@@ -604,7 +604,7 @@ abstract class user_selector_base {
                 }
             }
         } else {
-            $output = '  <optgroup label="' . htmlspecialchars($groupname) . '">' . "\n";
+            $output = '  <optgroup label="' . htmlspecialchars($groupname, ENT_COMPAT) . '">' . "\n";
             $output .= '    <option disabled="disabled">&nbsp;</option>' . "\n";
         }
         $output .= "  </optgroup>\n";
@@ -833,7 +833,8 @@ class group_non_members_selector extends groups_user_selector_base {
      * @return string
      */
     public function output_user($user) {
-        return parent::output_user($user) . ' (' . $user->numgroups . ')';
+        return get_string('usergroupselectorcount', 'core_user',
+            (object) ['groupcount' => $user->numgroups, 'fullname' => parent::output_user($user)]);
     }
 
     /**

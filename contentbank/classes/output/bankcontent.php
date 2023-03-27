@@ -14,26 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * core_contentbank specific renderers
- *
- * @package   core_contentbank
- * @copyright  2020 Ferran Recio <ferran@moodle.com>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
 namespace core_contentbank\output;
 
+use context_coursecat;
+use core_contentbank\content;
 use core_contentbank\contentbank;
 use renderable;
 use templatable;
 use renderer_base;
 use stdClass;
-use core_contentbank\content;
 
 /**
  * Class containing data for bank content
  *
+ * @package    core_contentbank
  * @copyright  2020 Ferran Recio <ferran@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -69,10 +63,10 @@ class bankcontent implements renderable, templatable {
      *
      * @param \core_contentbank\content[] $contents   Array of content bank contents.
      * @param array $toolbar List of content bank toolbar options.
-     * @param \context $context Optional context to check (default null)
+     * @param \context|null $context Optional context to check (default null)
      * @param contentbank $cb Contenbank object.
      */
-    public function __construct(array $contents, array $toolbar, \context $context = null, contentbank $cb) {
+    public function __construct(array $contents, array $toolbar, ?\context $context, contentbank $cb) {
         $this->contents = $contents;
         $this->toolbar = $toolbar;
         $this->context = $context;
@@ -138,7 +132,8 @@ class bankcontent implements renderable, templatable {
         }
         $options = [];
         foreach ($this->allowedcategories as $allowedcategory) {
-            $options[$allowedcategory->ctxid] = $allowedcategory->name;
+            $options[$allowedcategory->ctxid] = format_string($allowedcategory->name, true,
+                context_coursecat::instance($allowedcategory->ctxinstance));
         }
         if (!empty($options)) {
             $allowedcontexts['categories'] = [get_string('coursecategories') => $options];

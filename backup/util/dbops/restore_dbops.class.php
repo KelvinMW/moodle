@@ -1172,9 +1172,10 @@ abstract class restore_dbops {
      * @param string $restoreid Restore ID
      * @param int $userid Default userid for files
      * @param \core\progress\base $progress Object used for progress tracking
+     * @param int $courseid Course ID
      */
     public static function create_included_users($basepath, $restoreid, $userid,
-            \core\progress\base $progress) {
+            \core\progress\base $progress, int $courseid = 0) {
         global $CFG, $DB;
         require_once($CFG->dirroot.'/user/profile/lib.php');
         $progress->start_progress('Creating included users');
@@ -1295,6 +1296,9 @@ abstract class restore_dbops {
                         }
                     }
                 }
+
+                // Trigger event that user was created.
+                \core\event\user_created::create_from_user_id_on_restore($newuserid, $restoreid, $courseid)->trigger();
 
                 // Process tags
                 if (core_tag_tag::is_enabled('core', 'user') && isset($user->tags)) { // If enabled in server and present in backup.
@@ -1811,10 +1815,9 @@ abstract class restore_dbops {
     public static function calculate_course_names($courseid, $fullname, $shortname) {
         global $CFG, $DB;
 
-        $currentfullname = '';
-        $currentshortname = '';
         $counter = 0;
-        // Iteratere while the name exists
+
+        // Iterate while fullname or shortname exist.
         do {
             if ($counter) {
                 $suffixfull  = ' ' . get_string('copyasnoun') . ' ' . $counter;
@@ -1823,8 +1826,11 @@ abstract class restore_dbops {
                 $suffixfull  = '';
                 $suffixshort = '';
             }
-            $currentfullname = $fullname.$suffixfull;
-            $currentshortname = substr($shortname, 0, 100 - strlen($suffixshort)).$suffixshort; // < 100cc
+
+            // Ensure we don't overflow maximum length of name fields, in multi-byte safe manner.
+            $currentfullname = core_text::substr($fullname, 0, 254 - strlen($suffixfull)) . $suffixfull;
+            $currentshortname = core_text::substr($shortname, 0, 100 - strlen($suffixshort)) . $suffixshort;
+
             $coursefull  = $DB->get_record_select('course', 'fullname = ? AND id != ?',
                     array($currentfullname, $courseid), '*', IGNORE_MULTIPLE);
             $courseshort = $DB->get_record_select('course', 'shortname = ? AND id != ?', array($currentshortname, $courseid));

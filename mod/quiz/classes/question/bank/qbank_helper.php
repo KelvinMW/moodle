@@ -22,8 +22,7 @@ use qubaid_condition;
 
 defined('MOODLE_INTERNAL') || die();
 
-require_once($CFG->dirroot . '/mod/quiz/accessmanager.php');
-require_once($CFG->dirroot . '/mod/quiz/attemptlib.php');
+require_once($CFG->dirroot . '/question/engine/bank.php');
 
 /**
  * Helper class for question bank and its associated data.
@@ -108,6 +107,7 @@ class qbank_helper {
                        slot.id AS slotid,
                        slot.page,
                        slot.maxmark,
+                       slot.displaynumber,
                        slot.requireprevious,
                        qsr.filtercondition,
                        qv.status,
@@ -183,7 +183,6 @@ class qbank_helper {
                 $slot->category = 0;
                 $slot->qtype = 'missingtype';
                 $slot->name = get_string('missingquestion', 'quiz');
-                $slot->maxmark = 0;
                 $slot->questiontext = ' ';
                 $slot->questiontextformat = FORMAT_HTML;
                 $slot->length = 1;

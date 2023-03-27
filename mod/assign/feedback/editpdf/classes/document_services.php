@@ -438,9 +438,13 @@ EOD;
         $fs->delete_area_files($record->contextid, $record->component, $record->filearea, $record->itemid);
 
         $files = array();
+        $images = $pdf->get_images();
         for ($i = 0; $i < $pagecount; $i++) {
             try {
-                $image = $pdf->get_image($i);
+                if (empty($images[$i])) {
+                    throw new \moodle_exception('error image');
+                }
+                $image = $images[$i];
                 if (!$resetrotation) {
                     $pagerotation = page_editor::get_page_rotation($grade->id, $i);
                     $degree = !empty($pagerotation) ? $pagerotation->degree : 0;
@@ -641,6 +645,7 @@ EOD;
      * @return stored_file
      */
     public static function generate_feedback_document($assignment, $userid, $attemptnumber) {
+        global $CFG;
 
         $assignment = self::get_assignment_from_param($assignment);
 
@@ -669,6 +674,20 @@ EOD;
         $file->copy_content_to($combined); // Copy the file.
 
         $pdf = new pdf();
+
+        // Set fontname from course setting if it's enabled.
+        if (!empty($CFG->enablepdfexportfont)) {
+            $fontlist = $pdf->get_export_fontlist();
+            // Load font from course if it's more than 1.
+            if (count($fontlist) > 1) {
+                $course = $assignment->get_course();
+                if (!empty($course->pdfexportfont)) {
+                    $pdf->set_export_font_name($course->pdfexportfont);
+                }
+            } else {
+                $pdf->set_export_font_name(current($fontlist));
+            }
+        }
 
         $fs = get_file_storage();
         $stamptmpdir = make_temp_directory('assignfeedback_editpdf/stamps/' . self::hash($assignment, $userid, $attemptnumber));
@@ -916,10 +935,13 @@ EOD;
         $oldfile = $fs->get_file($record->contextid, $record->component, $record->filearea,
             $record->itemid, $record->filepath, $record->filename);
 
-        $newhash = sha1($newfilepath);
-
-        // Delete old file if exists.
-        if ($oldfile && $newhash !== $oldfile->get_contenthash()) {
+        if ($oldfile) {
+            $newhash = \file_storage::hash_from_path($newfilepath);
+            if ($newhash === $oldfile->get_contenthash()) {
+                // Use existing file if contenthash match.
+                return $oldfile;
+            }
+            // Delete existing file.
             $oldfile->delete();
         }
 

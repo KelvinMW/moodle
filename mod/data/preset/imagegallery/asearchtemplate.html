@@ -1,12 +1,21 @@
-<div class="defaulttemplate"><table class="mod-data-default-template">
-<tbody><tr class="r0">
-<td class="template-field cell c0">Title: </td>
-<td class="template-token cell c1 lastcol">[[title]]</td>
-</tr>
-<tr class="r1">
-<td class="template-field cell c0">Caption: </td>
-<td class="template-token cell c1 lastcol">[[caption]]</td>
-</tr>
-</tbody>
-</table>
+<div class="imagegallery-asearch container">
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3">
+        <div class="form-group col">
+            <div class="font-weight-bold mb-2">First name</div>
+            ##firstname##
+        </div>
+        <div class="form-group col">
+            <div class="font-weight-bold mb-2">Last name</div>
+            ##lastname##
+        </div>
+
+        <div class="form-group col">
+            <div class="font-weight-bold mb-2">[[title#name]]</div>
+            [[title]]
+        </div>
+        <div class="form-group col">
+            <div class="font-weight-bold mb-2">[[description#name]]</div>
+            [[description]]
+        </div>
+    </div>
 </div>

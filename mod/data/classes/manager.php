@@ -20,9 +20,11 @@ use cm_info;
 use context_module;
 use completion_info;
 use data_field_base;
+use mod_data_renderer;
 use mod_data\event\course_module_viewed;
 use mod_data\event\template_viewed;
 use mod_data\event\template_updated;
+use moodle_page;
 use core_component;
 use stdClass;
 
@@ -37,6 +39,9 @@ class manager {
 
     /** Module name. */
     const MODULE = 'data';
+
+    /** The plugin name. */
+    const PLUGINNAME = 'mod_data';
 
     /** Template list with their files required to save the information of a preset. */
     const TEMPLATES_LIST = [
@@ -53,7 +58,7 @@ class manager {
     ];
 
     /** @var string plugin path. */
-    private $path;
+    public $path;
 
     /** @var stdClass course_module record. */
     private $instance;
@@ -153,6 +158,18 @@ class manager {
     }
 
     /**
+     * Return the current module renderer.
+     *
+     * @param moodle_page|null $page the current page
+     * @return mod_data_renderer the module renderer
+     */
+    public function get_renderer(?moodle_page $page = null): mod_data_renderer {
+        global $PAGE;
+        $page = $page ?? $PAGE;
+        return $page->get_renderer(self::PLUGINNAME);
+    }
+
+    /**
      * Trigger module viewed event and set the module viewed for completion.
      *
      * @param stdClass $course course object
@@ -227,7 +244,7 @@ class manager {
     public function get_field_records() {
         global $DB;
         if ($this->_fieldrecords === null) {
-            $this->_fieldrecords = $DB->get_records('data_fields', ['dataid' => $this->instance->id]);
+            $this->_fieldrecords = $DB->get_records('data_fields', ['dataid' => $this->instance->id], 'id');
         }
         return $this->_fieldrecords;
     }
@@ -239,6 +256,7 @@ class manager {
      * @return data_field_base the data field class instance
      */
     public function get_field(stdClass $fieldrecord): data_field_base {
+        global $CFG; // Some old field plugins require $CFG to be in the  scope.
         $filepath = "{$this->path}/field/{$fieldrecord->type}/field.class.php";
         $classname = "data_field_{$fieldrecord->type}";
         if (!file_exists($filepath)) {
@@ -258,6 +276,11 @@ class manager {
      * NOTE: this method returns a default template if the module template is empty.
      * However, it won't update the template database field.
      *
+     * Some possible options:
+     * - search: string with the current searching text.
+     * - page: integer repesenting the current pagination page numbre (if any)
+     * - baseurl: a moodle_url object to the current page.
+     *
      * @param string $templatename
      * @param array $options extra display options array
      * @return template the template instance
@@ -271,12 +294,43 @@ class manager {
         if (empty($templatecontent)) {
             $templatecontent = data_generate_default_template($instance, $templatename, 0, false, false);
         }
+        $options['templatename'] = $templatename;
         // Some templates have extra options.
-        if ($templatename === 'singletemplate') {
-            $options['comments'] = true;
-            $options['ratings'] = true;
-        }
+        $options = array_merge($options, template::get_default_display_options($templatename));
+
         return new template($this, $templatecontent, $options);
+    }
+
+    /** Check if the user can manage templates on the current context.
+     *
+     * @param int $userid the user id to check ($USER->id if null).
+     * @return bool if the user can manage templates on current context.
+     */
+    public function can_manage_templates(?int $userid = null): bool {
+        global $USER;
+        if (!$userid) {
+            $userid = $USER->id;
+        }
+        return has_capability('mod/data:managetemplates', $this->context, $userid);
+    }
+
+    /** Check if the user can export entries on the current context.
+     *
+     * @param int $userid the user id to check ($USER->id if null).
+     * @return bool if the user can export entries on current context.
+     */
+    public function can_export_entries(?int $userid = null): bool {
+        global $USER, $DB;
+
+        if (!$userid) {
+            $userid = $USER->id;
+        }
+
+        // Exportallentries and exportentry are basically the same capability.
+        return has_capability('mod/data:exportallentries', $this->context) ||
+                has_capability('mod/data:exportentry', $this->context) ||
+                (has_capability('mod/data:exportownentry', $this->context) &&
+                $DB->record_exists('data_records', ['userid' => $userid, 'dataid' => $this->instance->id]));
     }
 
     /**
@@ -315,6 +369,57 @@ class manager {
         ));
         $event->trigger();
 
+        return true;
+    }
+
+    /**
+     * Reset all templates.
+     *
+     * @return bool if the reset is done or not
+     */
+    public function reset_all_templates(): bool {
+        $newtemplates = new stdClass();
+        foreach (self::TEMPLATES_LIST as $templatename => $templatefile) {
+            $newtemplates->{$templatename} = '';
+        }
+        return $this->update_templates($newtemplates);
+    }
+
+    /**
+     * Reset all templates related to a specific template.
+     *
+     * @param string $templatename the template name
+     * @return bool if the reset is done or not
+     */
+    public function reset_template(string $templatename): bool {
+        $newtemplates = new stdClass();
+        // Reset the template to default.
+        $newtemplates->{$templatename} = '';
+        if ($templatename == 'listtemplate') {
+            $newtemplates->listtemplateheader = '';
+            $newtemplates->listtemplatefooter = '';
+        }
+        if ($templatename == 'rsstemplate') {
+            $newtemplates->rsstitletemplate = '';
+        }
+        return $this->update_templates($newtemplates);
+    }
+
+    /** Check if the user can view a specific preset.
+     *
+     * @param preset $preset the preset instance.
+     * @param int $userid the user id to check ($USER->id if null).
+     * @return bool if the user can view the preset.
+     */
+    public function can_view_preset (preset $preset, ?int $userid = null): bool {
+        global $USER;
+        if (!$userid) {
+            $userid = $USER->id;
+        }
+        $presetuserid = $preset->get_userid();
+        if ($presetuserid && $presetuserid != $userid) {
+            return has_capability('mod/data:viewalluserpresets', $this->context, $userid);
+        }
         return true;
     }
 

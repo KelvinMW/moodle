@@ -1,6 +1,8 @@
 // The class gradetreebox matches the pages displaying the gradebook
 // "Gradebook setup" > "Simple view" and "Full view".
 .gradetreebox {
+    margin: 20px 0 30px 0;
+
     h4 {
         // Force back the base font-size to minimise width.
         font-size: $font-size-base;
@@ -33,7 +35,6 @@
 
 .path-grade-report-grader {
     #region-main {
-        overflow-x: visible;
         min-width: 100%;
         width: auto;
         display: flex;
@@ -59,6 +60,17 @@
     }
     .gradefail {
         color: $danger;
+    }
+}
+
+.path-grade {
+    #region-main {
+        overflow-x: visible;
+    }
+
+    .user-heading .userinitials {
+        width: 50px;
+        height: 50px;
     }
 }
 
@@ -286,134 +298,188 @@
 }
 
 // Set up grades layout.
-.path-grade-edit-tree .setup-grades {
-    h4 {
-        margin: 0;
-    }
+.path-grade-edit-tree {
+    .gradetree-wrapper {
+        padding: 10px 10px;
+        background-color: $gray-100;
 
-    .column-rowspan {
-        padding: 0;
-        width: 24px;
-        min-width: 24px;
-        max-width: 24px;
-    }
+        .setup-grades {
+            h4 {
+                margin: 0;
+            }
 
-    .category td.column-name {
-        padding-left: 0;
-    }
+            .column-rowspan {
+                padding: 0;
+                width: 24px;
+                min-width: 24px;
+                max-width: 24px;
+            }
 
-    td.column-name {
-        padding-left: 24px;
-    }
+            .emptyrow {
+                display: none;
+            }
 
-    td.movehere {
-        padding: 0;
-    }
+            .gradeitemdescription {
+                font-weight: normal;
+                padding-left: 24px;
+            }
 
-    td.movehere a.movehere {
-        display: block;
-        width: 100%;
-        height: 2rem;
-        border: 2px dashed $gray-800;
-    }
+            &.generaltable {
 
-    .category input[type="text"],
-    .category .column-range,
-    .categoryitem,
-    .courseitem {
-        font-weight: bold;
-    }
+                tr {
+                    &.spacer {
+                        height: 0.5rem;
+                    }
 
-    .emptyrow {
-        display: none;
-    }
+                    &[data-hidden="true"] {
+                        display: none;
+                    }
 
-    .gradeitemdescription {
-        font-weight: normal;
-        padding-left: 24px;
-    }
+                    th {
+                        vertical-align: bottom;
+                        border: none;
+                        text-align: left;
+                        background-color: $gray-100;
 
-    .column-weight {
-        white-space: nowrap;
+                        &.rowspan {
+                            padding: 0;
+                            width: 24px;
+                            min-width: 24px;
+                        }
+                    }
 
-        &.level3 {
-            padding-left: 37px;
-        }
+                    td {
+                        min-width: 4.5em;
+                        background-color: $gray-100;
+                        border: none;
+                        vertical-align: middle;
 
-        &.level4 {
-            padding-left: 66px;
-        }
+                        &.column-name {
+                            padding-left: 38px;
 
-        &.level5 {
-            padding-left: 95px;
-        }
+                            .small {
+                                font-size: 70%;
+                            }
 
-        &.level6 {
-            padding-left: 124px;
-        }
+                            .itemicon {
+                                font-size: 18px;
+                                width: 18px;
+                                height: 18px;
+                            }
+                        }
 
-        &.level7 {
-            padding-left: 153px;
-        }
+                        &.column-weight {
+                            .weightoverride {
+                                margin-right: 5px;
+                            }
+                        }
 
-        &.level8 {
-            padding-left: 182px;
-        }
+                        &.column-actions {
+                            .dropdown-toggle::after {
+                                display: none;
+                            }
+                        }
 
-        &.level9 {
-            padding-left: 211px;
-        }
+                        &.movehere {
+                            padding: 0;
 
-        &.level10 {
-            padding-left: 240px;
-        }
-    }
+                            a.movehere {
+                                display: block;
+                                width: 100%;
+                                margin: 5px 0 5px 0;
+                                padding: 3px 0 3px 0;
 
-    .column-range {
-        &.level2 {
-            padding-left: 37px;
-        }
+                                hr {
+                                    border-top: 2px dashed $gray-500;
+                                    margin: 0;
+                                }
 
-        &.level3 {
-            padding-left: 66px;
-        }
+                                &:hover {
+                                    hr {
+                                        border-top: 2px dashed $blue;
+                                    }
 
-        &.level4 {
-            padding-left: 95px;
-        }
+                                }
+                            }
+                        }
+                    }
 
-        &.level5 {
-            padding-left: 124px;
-        }
+                    &.category {
+                        td {
+                            background-color: white;
+                            border-top: 1px solid $gray-300;
+                            border-bottom: 1px solid $gray-300;
 
-        &.level6 {
-            padding-left: 153px;
-        }
+                            &:first-child {
+                                border-left: 1px solid $gray-300;
+                            }
 
-        &.level7 {
-            padding-left: 182px;
-        }
+                            &:last-child {
+                                border-right: 1px solid $gray-300;
+                            }
 
-        &.level8 {
-            padding-left: 211px;
-        }
+                            &.column-name {
+                                padding-left: 10px;
+                                font-weight: bold;
 
-        &.level9 {
-            padding-left: 240px;
-        }
+                                div {
+                                    display: flex;
+                                    min-height: 30px;
+                                    align-items: center;
 
-        &.level10 {
-            padding-left: 269px;
-        }
-    }
+                                    a {
+                                        &.toggle-category {
+                                            height: 24px;
+                                            width: 24px;
+                                            font-size: 12px;
+                                            line-height: 24px;
+                                            margin-right: 3px;
 
-    &.generaltable {
-        .levelodd {
-            background-color: $table-accent-bg;
-        }
+                                            &[aria-expanded="true"] .expanded,
+                                            &[aria-expanded="false"] .collapsed {
+                                                display: none;
+                                            }
 
-        .leveleven {
-            background-color: $table-bg;
+                                            i {
+                                                font-size: 12px;
+                                                width: 12px;
+                                                height: 12px;
+                                                color: #1d2125;
+                                                margin: 0;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    &.item {
+                        td {
+                            background-color: white;
+                            border-top: 3px solid $gray-100;
+                        }
+
+                        &.categoryitem,
+                        &.courseitem {
+                            td {
+                                min-width: 4.5em;
+                                background-color: $gray-100;
+                                border: none;
+                                vertical-align: middle;
+
+                                &.column-name {
+                                    padding-left: 0;
+                                }
+
+                                &:not(.column-actions) {
+                                    font-weight: bold;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -447,14 +513,13 @@
 
         tr.heading {
             position: sticky;
-            top: 0vh;
+            top: 0;
             z-index: 1;
         }
 
         tr.lastrow {
             position: sticky;
             bottom: 0;
-            z-index: 1;
 
             td,
             th {
@@ -465,6 +530,7 @@
         th.header {
             position: sticky;
             left: -3rem;
+            z-index: 1;
         }
 
         td.noborder {
@@ -505,6 +571,74 @@
 /**
  * Single view.
  */
-.path-grade-report-singleview input[name^="finalgrade"] {
-    width: 80px;
+.path-grade-report-singleview .reporttable {
+    input[name^="finalgrade"] {
+        width: 80px;
+        display: inline-block;
+    }
+    .action-menu {
+        display: inline-block;
+        margin-left: 0.5rem;
+        float: right;
+    }
+    .dropdown-toggle::after {
+        display: none;
+    }
+}
+
+.gradereport-grader-table {
+    input[name^="grade"] {
+        width: 80px;
+        display: inline-block;
+    }
+    .dropdown-toggle::after {
+        display: none;
+    }
+}
+
+
+.search-widget {
+    .dropdown-menu {
+        padding: 0.8rem 1.2rem;
+
+        &.wide {
+            width: 350px;
+        }
+
+        &.narrow {
+            width: 250px;
+        }
+
+        .dropdown-item {
+            span {
+                &.email {
+                    color: $text-muted;
+                }
+            }
+        }
+
+        .dropdown-item:hover,
+        .dropdown-item:active {
+            span {
+                color: #fff;
+            }
+        }
+
+        .searchresultscontainer {
+            height: 178px;
+            font-size: 90%;
+
+            .searchresultitemscontainer {
+                height: 178px;
+                max-height: 178px;
+                overflow: auto;
+            }
+        }
+
+        .unsearchablecontentcontainer {
+            border-top: 1px solid #dee2e6;
+            padding-top: 10px;
+            font-size: 90%;
+        }
+    }
 }

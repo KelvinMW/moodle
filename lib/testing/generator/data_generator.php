@@ -541,6 +541,14 @@ EOD;
             $record['descriptionformat'] = FORMAT_MOODLE;
         }
 
+        if (!isset($record['visibility'])) {
+            $record['visibility'] = GROUPS_VISIBILITY_ALL;
+        }
+
+        if (!isset($record['participation'])) {
+            $record['participation'] = true;
+        }
+
         $id = groups_create_group((object)$record);
 
         // Allow tests to set group pictures.
@@ -1322,6 +1330,11 @@ EOD;
             $data['sortorder'] = (int)$DB->get_field_sql(
                     'SELECT MAX(sortorder) FROM {user_info_field} WHERE categoryid = ?',
                     [$data['categoryid']]) + 1;
+        }
+
+        if ($data['datatype'] === 'menu' && isset($data['param1'])) {
+            // Convert new lines to the proper character.
+            $data['param1'] = str_replace('\n', "\n", $data['param1']);
         }
 
         // Defaults for other values.

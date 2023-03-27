@@ -49,19 +49,10 @@ class grade_edit_tree {
     public $categories = array();
 
     /**
-     * Show calculator icons next to manual grade items
-     * @var bool $show_calculations
-     */
-    private $show_calculations;
-
-    /**
      * Constructor
      */
     public function __construct($gtree, $moving, $gpr) {
         global $USER, $OUTPUT, $COURSE;
-
-        $systemdefault = get_config('moodle', 'grade_report_showcalculations');
-        $this->show_calculations = get_user_preferences('grade_report_showcalculations', $systemdefault);
 
         $this->gtree = $gtree;
         $this->moving = $moving;
@@ -113,7 +104,9 @@ class grade_edit_tree {
 
         $object = $element['object'];
         $eid    = $element['eid'];
-        $object->name = $this->gtree->get_element_header($element, true, true, true, true, true);
+        $object->name = $this->gtree->get_element_header($element, true, false, true, true, true);
+        $object->icon = $this->gtree->get_element_icon($element);
+        $object->type = $this->gtree->get_element_type_string($element);
         $object->stripped_name = $this->gtree->get_element_header($element, false, false, false);
         $is_category_item = false;
         if ($element['type'] == 'categoryitem' || $element['type'] == 'courseitem') {
@@ -127,7 +120,7 @@ class grade_edit_tree {
 
         $moveaction = '';
         $actionsmenu = new action_menu();
-        $actionsmenu->set_menu_trigger(get_string('edit'));
+        $actionsmenu->set_menu_trigger($OUTPUT->pix_icon('i/moremenu', get_string('actions')), 'actions');
         $actionsmenu->set_owner_selector('grade-item-' . $eid);
 
         if (!$is_category_item && ($icon = $this->gtree->get_edit_icon($element, $this->gpr, true))) {
@@ -137,7 +130,7 @@ class grade_edit_tree {
         $type = $element['type'];
         $iscalculated = ($type == 'item' or $type == 'courseitem' or $type == 'categoryitem') && $object->is_calculated();
         $icon = $this->gtree->get_calculation_icon($element, $this->gpr, true);
-        if ($iscalculated || ($this->show_calculations && $icon)) {
+        if ($iscalculated || $icon) {
             $actionsmenu->add($icon);
         }
 
@@ -190,7 +183,19 @@ class grade_edit_tree {
             $cell->attributes['class'] = $element['type'] . ' moving column-name level' .
                 ($level + 1) . ' level' . ($level % 2 ? 'even' : 'odd');
             $cell->text = $object->name.' ('.get_string('move').')';
-            return array(new html_table_row(array($cell)));
+
+            // Create a row that represents the available area to move a grade item or a category into.
+            $movingarea = new html_table_row();
+            // Obtain all parent category identifiers for this item and add them to its class list. This information
+            // will be used when collapsing or expanding grade categories to properly show or hide this area.
+            $parentcategories = array_merge($rowclasses, [$eid]);
+            $movingarea->attributes = [
+                'class' => implode(' ', $parentcategories),
+                'data-hidden' => 'false'
+            ];
+            $movingarea->cells[] = $cell;
+
+            return [$movingarea];
         }
 
         if ($element['type'] == 'category') {
@@ -208,7 +213,8 @@ class grade_edit_tree {
 
             $html_children = array();
 
-            $row_count = 0;
+            // Take into consideration that a category item always has an empty row (spacer) below.
+            $row_count = 1;
 
             foreach($element['children'] as $child_el) {
                 $moveto = null;
@@ -243,9 +249,17 @@ class grade_edit_tree {
                     $cell->colspan = 12;
                     $cell->attributes['class'] = 'movehere level' . ($level + 1) . ' level' . ($level % 2 ? 'even' : 'odd');
 
-                    $cell->text = html_writer::link($aurl, '', array('title' => get_string('movehere'), 'class' => 'movehere'));
+                    $cell->text = html_writer::link($aurl, html_writer::empty_tag('hr'),
+                        ['title' => get_string('movehere'), 'class' => 'movehere']);
 
-                    $moveto = new html_table_row(array($cell));
+                    // Create a row that represents the available area to move a grade item or a category into.
+                    $moveto = new html_table_row();
+                    // Obtain all parent category identifiers for this item and add them to its class list. This information
+                    // will be used when collapsing or expanding grade categories to properly show or hide this area.
+                    $parentcategories = array_merge($rowclasses, [$eid]);
+                    $moveto->attributes['class'] = implode(' ', $parentcategories);
+                    $moveto->attributes['data-hidden'] = 'false';
+                    $moveto->cells[] = $cell;
                 }
 
                 $newparents = $parents;
@@ -299,26 +313,19 @@ class grade_edit_tree {
                 $courseclass = 'coursecategory';
             }
 
-            $row = new html_table_row();
-            $row->id = 'grade-item-' . $eid;
-            $row->attributes['class'] = $courseclass . ' category ' . $dimmed;
-            $row->attributes['data-category'] = $eid;
-            $row->attributes['data-itemid'] = $category->get_grade_item()->id;
+            $categoryrow = new html_table_row();
+            $categoryrow->id = 'grade-item-' . $eid;
+            $categoryrow->attributes['class'] = $courseclass . ' category ' . $dimmed;
+            $categoryrow->attributes['data-category'] = $eid;
+            $categoryrow->attributes['data-itemid'] = $category->get_grade_item()->id;
+            $categoryrow->attributes['data-hidden'] = 'false';
             foreach ($rowclasses as $class) {
-                $row->attributes['class'] .= ' ' . $class;
+                $categoryrow->attributes['class'] .= ' ' . $class;
             }
-
-            $headercell = new html_table_cell();
-            $headercell->header = true;
-            $headercell->scope = 'row';
-            $headercell->attributes['title'] = $object->stripped_name;
-            $headercell->attributes['class'] = 'cell column-rowspan rowspan ' . $levelclass;
-            $headercell->rowspan = $row_count + 1;
-            $row->cells[] = $headercell;
 
             foreach ($this->columns as $column) {
                 if (!($this->moving && $column->hide_when_moving)) {
-                    $row->cells[] = $column->get_category_cell($category, $levelclass, [
+                    $categoryrow->cells[] = $column->get_category_cell($category, $levelclass, [
                         'id' => $id,
                         'name' => $object->name,
                         'level' => $level,
@@ -329,9 +336,21 @@ class grade_edit_tree {
                 }
             }
 
-            $returnrows[] = $row;
+            $emptyrow = new html_table_row();
+            // Obtain all parent category identifiers for this item and add them to its class list. This information
+            // will be used when collapsing or expanding grade categories to properly show or hide this area.
+            $parentcategories = array_merge($rowclasses, [$eid]);
+            $emptyrow->attributes['class'] = 'spacer ' . implode(' ', $parentcategories);
+            $emptyrow->attributes['data-hidden'] = 'false';
 
-            $returnrows = array_merge($returnrows, $html_children);
+            $headercell = new html_table_cell();
+            $headercell->header = true;
+            $headercell->scope = 'row';
+            $headercell->attributes['class'] = 'cell column-rowspan rowspan';
+            $headercell->rowspan = $row_count;
+            $emptyrow->cells[] = $headercell;
+
+            $returnrows = array_merge([$categoryrow, $emptyrow], $html_children);
 
             // Print a coloured row to show the end of the category across the table
             $endcell = new html_table_cell();
@@ -359,15 +378,35 @@ class grade_edit_tree {
             $gradeitemrow->id = 'grade-item-' . $eid;
             $gradeitemrow->attributes['class'] = $categoryitemclass . ' item ' . $dimmed;
             $gradeitemrow->attributes['data-itemid'] = $object->id;
+            $gradeitemrow->attributes['data-hidden'] = 'false';
+            // If this item is a course or category aggregation, add a data attribute that stores the identifier of
+            // the related category or course. This attribute is used when collapsing a grade category to fetch the
+            // max grade from the aggregation and display it in the grade category row when the category items are
+            // collapsed and the aggregated max grade is not visible.
+            if (!empty($categoryitemclass)) {
+                $gradeitemrow->attributes['data-aggregationforcategory'] = $parent_eid;
+            }
             foreach ($rowclasses as $class) {
                 $gradeitemrow->attributes['class'] .= ' ' . $class;
             }
 
             foreach ($this->columns as $column) {
                 if (!($this->moving && $column->hide_when_moving)) {
-                    $gradeitemrow->cells[] = $column->get_item_cell($item, array('id' => $id, 'name' => $object->name,
-                        'level' => $level, 'actions' => $actions, 'element' => $element, 'eid' => $eid,
-                        'moveaction' => $moveaction, 'itemtype' => $object->itemtype));
+                    $gradeitemrow->cells[] = $column->get_item_cell(
+                        $item,
+                        [
+                            'id' => $id,
+                            'name' => $object->name,
+                            'level' => $level,
+                            'actions' => $actions,
+                            'element' => $element,
+                            'eid' => $eid,
+                            'moveaction' => $moveaction,
+                            'itemtype' => $object->itemtype,
+                            'icon' => $object->icon,
+                            'type' => $object->type
+                        ]
+                    );
                 }
             }
 
@@ -814,13 +853,18 @@ class grade_edit_tree_column_name extends grade_edit_tree_column {
 
     public function get_category_cell($category, $levelclass, $params) {
         global $OUTPUT;
+
         if (empty($params['name']) || empty($params['level'])) {
             throw new Exception('Array key (name or level) missing from 3rd param of grade_edit_tree_column_name::get_category_cell($category, $levelclass, $params)');
         }
+        $visibilitytoggle = $OUTPUT->render_from_template('core_grades/grade_category_visibility_toggle', [
+            'category' => $params['eid']
+        ]);
+
         $moveaction = isset($params['moveaction']) ? $params['moveaction'] : '';
         $categorycell = parent::get_category_cell($category, $levelclass, $params);
-        $categorycell->colspan = ($this->deepest_level +1) - $params['level'];
-        $categorycell->text = $OUTPUT->heading($moveaction . $params['name'], 4);
+        $categorycell->colspan = ($this->deepest_level + 2) - $params['level'];
+        $categorycell->text = html_writer::div($visibilitytoggle . $moveaction . $params['name'], 'font-weight-bold');
         return $categorycell;
     }
 
@@ -831,12 +875,24 @@ class grade_edit_tree_column_name extends grade_edit_tree_column {
             throw new Exception('Array key (name, level or element) missing from 2nd param of grade_edit_tree_column_name::get_item_cell($item, $params)');
         }
 
-        $name = $params['name'];
+        $itemicon = \html_writer::div($params['icon'], 'mr-1');
+        $itemtype = \html_writer::span($params['type'], 'd-block text-uppercase small dimmed_text');
+
+        // Generate the content for a cell that represents a grade item.
+        // If a behat test site is running avoid outputting the information about the type of the grade item.
+        // This additional information causes issues in behat particularly with the existing xpath used to
+        // interact with table elements.
+        if (!defined('BEHAT_SITE_RUNNING')) {
+            $content = \html_writer::div($itemtype . $params['name']);
+        } else {
+            $content = \html_writer::div($params['name']);
+        }
+
         $moveaction = isset($params['moveaction']) ? $params['moveaction'] : '';
 
         $itemcell = parent::get_item_cell($item, $params);
         $itemcell->colspan = ($this->deepest_level + 1) - $params['level'];
-        $itemcell->text = $moveaction . $name;
+        $itemcell->text = \html_writer::div($moveaction . $itemicon . $content, "{$params['itemtype']} d-flex align-items-center");
         return $itemcell;
     }
 }
@@ -900,7 +956,7 @@ class grade_edit_tree_column_range extends grade_edit_tree_column {
 
     public function get_category_cell($category, $levelclass, $params) {
         $categorycell = parent::get_category_cell($category, $levelclass, $params);
-        $categorycell->text = ' - ';
+        $categorycell->text = '';
         return $categorycell;
     }
 

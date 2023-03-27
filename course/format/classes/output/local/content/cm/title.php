@@ -35,7 +35,7 @@ use lang_string;
 use renderable;
 use section_info;
 use stdClass;
-use external_api;
+use core_external\external_api;
 use context_module;
 
 /**
@@ -90,10 +90,7 @@ class title extends inplace_editable implements named_templatable, renderable {
         $this->displayoptions = $this->load_display_options($displayoptions);
 
         if ($editable === null) {
-            $editable = $format->show_editor() && has_capability(
-                'moodle/course:manageactivities',
-                $mod->context
-            );
+            $editable = $format->show_editor();
         }
         $this->editable = $editable;
 

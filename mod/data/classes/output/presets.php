@@ -18,6 +18,7 @@ namespace mod_data\output;
 
 use action_menu;
 use action_menu_link_secondary;
+use mod_data\manager;
 use mod_data\preset;
 use moodle_url;
 use templatable;
@@ -34,28 +35,32 @@ use stdClass;
  */
 class presets implements templatable, renderable {
 
-    /** @var int $id The database module id. */
-    private $id;
-
     /** @var array $presets The array containing the existing presets. */
     private $presets;
 
-    /** @var moodle_url $formactionurl The the action url for the form. */
+    /** @var moodle_url $formactionurl The action url for the form. */
     private $formactionurl;
 
     /** @var bool $manage Whether the manage preset options should be displayed. */
     private $manage;
 
+    /** @var int $id instance id */
+    private $id;
+
+    /** @var int $cmid course module id */
+    private $cmid;
+
     /**
      * The class constructor.
      *
-     * @param int $id The database module id
+     * @param manager $manager The database manager
      * @param array $presets The array containing the existing presets
-     * @param moodle_url $formactionurl The the action url for the form
+     * @param moodle_url $formactionurl The action url for the form
      * @param bool $manage Whether the manage preset options should be displayed
      */
-    public function __construct(int $id, array $presets, moodle_url $formactionurl, bool $manage = false) {
-        $this->id = $id;
+    public function __construct(manager $manager, array $presets, moodle_url $formactionurl, bool $manage = false) {
+        $this->id = $manager->get_instance()->id;
+        $this->cmid = $manager->get_coursemodule()->id;
         $this->presets = $presets;
         $this->formactionurl = $formactionurl;
         $this->manage = $manage;
@@ -68,11 +73,10 @@ class presets implements templatable, renderable {
      * @return array
      */
     public function export_for_template(renderer_base $output): array {
-
         $presets = $this->get_presets($output);
         return [
-            'd' => $this->id,
-            'formactionul' => $this->formactionurl->out(),
+            'id' => $this->cmid,
+            'formactionurl' => $this->formactionurl->out(),
             'showmanage' => $this->manage,
             'presets' => $presets,
         ];
@@ -100,9 +104,17 @@ class presets implements templatable, renderable {
             }
             $actions = $this->get_preset_action_menu($output, $preset, $userid);
 
+            $fullname = $preset->get_fullname();
+            $previewurl = new moodle_url(
+                    '/mod/data/preset.php',
+                    ['d' => $this->id, 'fullname' => $fullname, 'action' => 'preview']
+            );
+
             $presets[] = [
                 'id' => $this->id,
+                'cmid' => $this->cmid,
                 'name' => $preset->name,
+                'url' => $previewurl->out(),
                 'shortname' => $preset->shortname,
                 'fullname' => $presetname,
                 'description' => $preset->description,
@@ -123,57 +135,103 @@ class presets implements templatable, renderable {
      * @return stdClass the resulting action menu
      */
     private function get_preset_action_menu(renderer_base $output, $preset, ?int $userid): stdClass {
-        global $PAGE;
 
         $actions = new stdClass();
-        $actionmenu = null;
-        // Only presets saved by users can be edited or removed (so the datapreset plugins shouldn't display these buttons).
-        if ($this->manage && !$preset->isplugin) {
-            $actionmenu = new action_menu();
-            $icon = $output->pix_icon('i/menu', get_string('actions'));
-            $actionmenu->set_menu_trigger($icon, 'btn btn-icon d-flex align-items-center justify-content-center');
-            $actionmenu->set_action_label(get_string('actions'));
-            $actionmenu->attributes['class'] .= ' presets-actions';
+        // If we cannot manage then return an empty menu.
+        if (!$this->manage) {
+            return $actions;
+        }
+        $actionmenu = new action_menu();
+        $actionmenu->set_kebab_trigger();
+        $actionmenu->set_action_label(get_string('actions'));
+        $actionmenu->set_additional_classes('presets-actions');
+        $canmanage = $preset->can_manage();
 
-            // Only users with mod/data:manageuserpresets capability have options to edit the preset.
-            if (data_user_can_delete_preset($PAGE->context, $preset)) {
-                $params = [
-                    'd' => $this->id,
+        $usepreseturl = new moodle_url('/mod/data/preset.php', [
+            'action' => 'usepreset',
+            'cmid' => $this->cmid,
+        ]);
+        $this->add_action_menu($actionmenu, get_string('usepreset', 'mod_data'), $usepreseturl, [
+                'data-action' => 'selectpreset',
+                'data-presetname' => $preset->get_fullname(),
+                'data-cmid' => $this->cmid,
+            ]
+        );
+
+        // Attention: the id here is the cm->id, not d->id.
+        $previewpreseturl = new moodle_url('/mod/data/preset.php', [
+            'fullname' => $preset->get_fullname(),
+            'action' => 'preview',
+            'id' => $this->cmid,
+        ]);
+        $this->add_action_menu($actionmenu, get_string('previewaction', 'mod_data'), $previewpreseturl, [
+                'data-action' => 'preview',
+            ]
+        );
+
+        // Presets saved by users can be edited or removed.
+        if (!$preset->isplugin) {
+            // Edit.
+            if ($canmanage) {
+                $editactionurl = new moodle_url('/mod/data/preset.php', [
                     'action' => 'edit',
-                ];
-                $editactionurl = new moodle_url('/mod/data/preset.php', $params);
-                $attributes = [
-                    'data-action' => 'editpreset',
-                    'data-dataid' => $this->id,
-                    "data-presetname" => $preset->name,
-                    "data-presetdescription" => $preset->description,
-                ];
-                $actionmenu->add(new action_menu_link_secondary(
-                    $editactionurl,
-                    null,
-                    get_string('edit'),
-                    $attributes
-                ));
-
-                // Delete.
-                $params = [
                     'd' => $this->id,
-                    'fullname' => "{$userid}/{$preset->shortname}",
-                    'action' => 'confirmdelete',
-                ];
-                $deleteactionurl = new moodle_url('/mod/data/preset.php', $params);
-                $actionmenu->add(new action_menu_link_secondary(
-                    $deleteactionurl,
-                    null,
-                    get_string('delete'),
-                ));
+                ]);
+                $this->add_action_menu($actionmenu, get_string('edit'), $editactionurl, [
+                    'data-action' => 'editpreset',
+                    'data-presetname' => $preset->name,
+                    'data-presetdescription' => $preset->description,
+                ]);
+            }
+
+            // Export.
+            $exporturl = new moodle_url('/mod/data/preset.php', [
+                'presetname' => $preset->name,
+                'action' => 'export',
+                'd' => $this->id,
+            ]);
+            $this->add_action_menu($actionmenu, get_string('export', 'mod_data'), $exporturl, [
+                'data-action' => 'exportpreset',
+                'data-presetname' => $preset->name,
+                'data-presetdescription' => $preset->description,
+            ]);
+
+            // Delete.
+            if ($canmanage) {
+
+                $deleteactionurl = new moodle_url('/mod/data/preset.php', [
+                    'action' => 'delete',
+                    'd' => $this->id,
+                ]);
+                $this->add_action_menu($actionmenu, get_string('delete'), $deleteactionurl, [
+                    'data-action' => 'deletepreset',
+                    'data-presetname' => $preset->name,
+                ]);
             }
         }
-
-        if (!is_null($actionmenu)) {
-            $actions = $actionmenu->export_for_template($output);
-        }
-
+        $actions = $actionmenu->export_for_template($output);
         return $actions;
+    }
+
+    /**
+     * Add action to the action menu
+     *
+     * @param action_menu $actionmenu
+     * @param string $actionlabel
+     * @param moodle_url $actionurl
+     * @param array $otherattributes
+     * @return void
+     */
+    private function add_action_menu(action_menu &$actionmenu, string $actionlabel, moodle_url $actionurl,
+        array $otherattributes) {
+        $attributes = [
+            'data-dataid' => $this->id,
+        ];
+        $actionmenu->add(new action_menu_link_secondary(
+            $actionurl,
+            null,
+            $actionlabel,
+            array_merge($attributes, $otherattributes),
+        ));
     }
 }

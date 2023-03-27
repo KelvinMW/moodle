@@ -453,7 +453,7 @@ class workshop {
         }
 
         if (!is_array($extensions)) {
-            $extensions = preg_split('/[\s,;:"\']+/', $extensions, null, PREG_SPLIT_NO_EMPTY);
+            $extensions = preg_split('/[\s,;:"\']+/', $extensions, -1, PREG_SPLIT_NO_EMPTY);
         }
 
         foreach ($extensions as $i => $extension) {
@@ -3027,7 +3027,6 @@ class workshop {
         $params['other']['pathnamehashes'] = array_keys($files);
 
         $event = \mod_workshop\event\assessable_uploaded::create($params);
-        $event->set_legacy_logdata($logdata);
         $event->trigger();
 
         return $submission->id;

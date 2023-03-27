@@ -23,14 +23,19 @@
  */
 namespace core\plugininfo;
 
-use moodle_url, part_of_admin_tree, admin_settingpage, admin_externalpage;
-
-defined('MOODLE_INTERNAL') || die();
+use admin_settingpage;
+use moodle_url;
+use part_of_admin_tree;
 
 /**
  * Class for authentication plugins
  */
 class auth extends base {
+
+    public static function plugintype_supports_disabling(): bool {
+        return true;
+    }
+
     public function is_uninstall_allowed() {
         global $DB;
 
@@ -117,10 +122,6 @@ class auth extends base {
             $settings = new admin_settingpage($section, $this->displayname,
                 'moodle/site:config', $this->is_enabled() === false);
             include($this->full_path('settings.php')); // This may also set $settings to null.
-        } else if (file_exists($this->full_path('config.html'))) {
-            $settingsurl = new moodle_url('/admin/auth_config.php', array('auth' => $this->name));
-            $settings = new admin_externalpage($section, $this->displayname,
-                $settingsurl, 'moodle/site:config', $this->is_enabled() === false);
         }
 
         if ($settings) {

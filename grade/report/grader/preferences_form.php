@@ -56,13 +56,9 @@ class grader_report_preferences_form extends moodleform {
 
             $preferences['prefshow'] = array();
 
-            $preferences['prefshow']['showcalculations'] = $checkbox_default;
-
-            $preferences['prefshow']['showeyecons']       = $checkbox_default;
             if ($canviewhidden) {
                 $preferences['prefshow']['showaverages']  = $checkbox_default;
             }
-            $preferences['prefshow']['showlocks']         = $checkbox_default;
 
             $preferences['prefrows'] = array(
                         'rangesdisplaytype'      => array(GRADE_REPORT_PREFERENCE_DEFAULT => '*default*',
@@ -92,10 +88,9 @@ class grader_report_preferences_form extends moodleform {
             }
         }
 
-        // quickgrading and showquickfeedback are conditional on grade:edit capability
+        // Quickgrading use conditional on grade:edit capability.
         if (has_capability('moodle/grade:edit', $context)) {
             $preferences['prefgeneral']['quickgrading'] = $checkbox_default;
-            $preferences['prefgeneral']['showquickfeedback'] = $checkbox_default;
         }
 
         // View capability is the lowest permission. Users with grade:manage or grade:edit must also have grader:view
@@ -107,12 +102,9 @@ class grader_report_preferences_form extends moodleform {
             $preferences['prefgeneral']['aggregationposition'] = array(GRADE_REPORT_PREFERENCE_DEFAULT => '*default*',
                                                                        GRADE_REPORT_AGGREGATION_POSITION_FIRST => get_string('positionfirst', 'grades'),
                                                                        GRADE_REPORT_AGGREGATION_POSITION_LAST => get_string('positionlast', 'grades'));
-            $preferences['prefgeneral']['enableajax'] = $checkbox_default;
 
             $preferences['prefshow']['showuserimage'] = $checkbox_default;
-            $preferences['prefshow']['showactivityicons'] = $checkbox_default;
             $preferences['prefshow']['showranges'] = $checkbox_default;
-            $preferences['prefshow']['showanalysisicon'] = $checkbox_default;
 
             if ($canviewhidden) {
                 $preferences['prefrows']['shownumberofgrades'] = $checkbox_default;

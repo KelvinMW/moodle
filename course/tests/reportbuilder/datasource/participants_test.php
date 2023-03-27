@@ -69,6 +69,10 @@ class participants_test extends core_reportbuilder_testcase {
         $this->getDataGenerator()->enrol_user($user1->id, $course->id, 'student',
             'manual', $timestart, $timeend, ENROL_USER_ACTIVE);
 
+        // Add them to a group.
+        $group = self::getDataGenerator()->create_group(['courseid' => $course->id]);
+        self::getDataGenerator()->create_group_member(['groupid' => $group->id, 'userid' => $user1->id]);
+
         // Mark course as completed for the user.
         $ccompletion = new completion_completion(array('course' => $course->id, 'userid' => $user1->id));
         $ccompletion->mark_enrolled($timestart);
@@ -93,10 +97,9 @@ class participants_test extends core_reportbuilder_testcase {
         $generator->create_column(['reportid' => $report->get('id'),
             'uniqueidentifier' => 'user:fullname']);
         // Order by enrolment method.
+        $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'enrolment:method', 'sortenabled' => 1]);
         $generator->create_column(['reportid' => $report->get('id'),
-            'uniqueidentifier' => 'enrolment:method'])
-            ->set('sortenabled', true)
-            ->update();
+            'uniqueidentifier' => 'group:name']);
         $generator->create_column(['reportid' => $report->get('id'),
             'uniqueidentifier' => 'completion:completed']);
         $generator->create_column(['reportid' => $report->get('id'),
@@ -139,6 +142,7 @@ class participants_test extends core_reportbuilder_testcase {
             'Music', // Course category name.
             fullname($user1), // User fullname.
             'Manual enrolments', // Enrolment method.
+            $group->name, // Group name.
             'Yes', // Course completed.
             userdate($timelastaccess), // Time last access.
             '100.0%', // Progress percentage.
@@ -206,6 +210,27 @@ class participants_test extends core_reportbuilder_testcase {
                 ],
                 'Lionel'
             ],
+            [
+                'completion:timeenrolled',
+                [
+                    'completion:timeenrolled_operator' => date::DATE_NOT_EMPTY,
+                ],
+                'Lionel'
+            ],
+            [
+                'completion:timestarted',
+                [
+                    'completion:timestarted_operator' => date::DATE_NOT_EMPTY,
+                ],
+                'Lionel'
+            ],
+            [
+                'completion:reaggregate',
+                [
+                    'completion:reaggregate_operator' => date::DATE_NOT_EMPTY,
+                ],
+                'Lionel'
+            ],
         ];
     }
 
@@ -250,6 +275,7 @@ class participants_test extends core_reportbuilder_testcase {
         // Mark course as completed for the user.
         $ccompletion = new completion_completion(array('course' => $course->id, 'userid' => $user1->id));
         $ccompletion->mark_enrolled($timestart);
+        $ccompletion->mark_inprogress($timestart);
         $ccompletion->mark_complete($timecompleted);
 
         // Set some last access value for the user in the course.
@@ -276,5 +302,25 @@ class participants_test extends core_reportbuilder_testcase {
 
         $this->assertCount(1, $content);
         $this->assertEquals($expected, $content[0]['c0_firstname']);
+    }
+
+    /**
+     * Stress test datasource
+     *
+     * In order to execute this test PHPUNIT_LONGTEST should be defined as true in phpunit.xml or directly in config.php
+     */
+    public function test_stress_datasource(): void {
+        if (!PHPUNIT_LONGTEST) {
+            $this->markTestSkipped('PHPUNIT_LONGTEST is not defined');
+        }
+
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $this->getDataGenerator()->create_and_enrol($course);
+
+        $this->datasource_stress_test_columns(participants::class);
+        $this->datasource_stress_test_columns_aggregation(participants::class);
+        $this->datasource_stress_test_conditions(participants::class, 'course:idnumber');
     }
 }

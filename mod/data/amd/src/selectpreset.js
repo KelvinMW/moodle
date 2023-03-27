@@ -33,13 +33,13 @@ const selectors = {
 export const init = () => {
     const radioButton = document.querySelectorAll(selectors.presetRadioButton);
 
-    // Initialize the "Use preset" button properly.
+    // Initialize the "Use a preset" button properly.
     disableUsePresetButton();
 
     radioButton.forEach((elem) => {
         elem.addEventListener('change', function(event) {
             event.preventDefault();
-            // Enable the "Use preset" button when any of the radio buttons in the presets list is checked.
+            // Enable the "Use a preset" button when any of the radio buttons in the presets list is checked.
             disableUsePresetButton();
         });
     });
@@ -47,7 +47,7 @@ export const init = () => {
 };
 
 /**
- * Decide whether to disable or not the "Use preset" button.
+ * Decide whether to disable or not the "Use a preset" button.
  * When there is no preset selected, the button should be displayed disabled; otherwise, it will appear enabled as a primary button.
  *
  * @method
@@ -55,17 +55,21 @@ export const init = () => {
  */
 const disableUsePresetButton = () => {
     let selectPresetButton = document.querySelector(selectors.selectPresetButton);
-    const selectedRadioButton = document.querySelectorAll(selectors.selectedPresetRadioButton);
+    const selectedRadioButton = document.querySelector(selectors.selectedPresetRadioButton);
 
-    if (selectedRadioButton.length > 0) {
+    if (selectedRadioButton) {
         // There is one preset selected, so the button should be enabled.
         selectPresetButton.removeAttribute('disabled');
         selectPresetButton.classList.remove('btn-secondary');
         selectPresetButton.classList.add('btn-primary');
+        selectPresetButton.setAttribute('data-presetname', selectedRadioButton.getAttribute('value'));
+        selectPresetButton.setAttribute('data-cmid', selectedRadioButton.getAttribute('data-cmid'));
     } else {
         // There is no any preset selected, so the button should be disabled.
         selectPresetButton.setAttribute('disabled', true);
         selectPresetButton.classList.remove('btn-primary');
         selectPresetButton.classList.add('btn-secondary');
+        selectPresetButton.removeAttribute('data-presetname');
+        selectPresetButton.removeAttribute('data-cmid');
     }
 };

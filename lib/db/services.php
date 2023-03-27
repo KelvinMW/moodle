@@ -91,8 +91,8 @@ $functions = array(
         'type'        => 'read',
         'ajax'          => true,
         'loginrequired' => true,
-   ),
-   'core_backup_get_async_backup_links_restore' => array(
+    ),
+    'core_backup_get_async_backup_links_restore' => array(
         'classname'   => 'core_backup_external',
         'classpath' => 'backup/externallib.php',
         'methodname'  => 'get_async_backup_links_restore',
@@ -384,6 +384,7 @@ $functions = array(
         'methodname' => 'delete_comments',
         'description' => 'Deletes a comment or comments.',
         'type' => 'write',
+        'ajax' => true,
         'services' => array(MOODLE_OFFICIAL_MOBILE_SERVICE),
     ),
     'core_completion_get_activities_completion_status' => array(
@@ -514,6 +515,12 @@ $functions = array(
         'type'        => 'read',
         'ajax'        => true,
     ),
+    'core_courseformat_file_handlers' => [
+        'classname'     => 'core_courseformat\external\file_handlers',
+        'description'   => 'Get the current course file hanlders.',
+        'type'          => 'read',
+        'ajax'          => true,
+    ],
     'core_courseformat_get_state' => [
         'classname'     => 'core_courseformat\external\get_state',
         'description'   => 'Get the current course state.',
@@ -679,7 +686,7 @@ $functions = array(
         'classname' => 'core_course_external',
         'methodname' => 'get_enrolled_users_by_cmid',
         'classpath' => 'course/externallib.php',
-        'description' => 'List users by course module id & filter by group id.',
+        'description' => 'List users by course module id, filter by group and active enrolment status.',
         'type' => 'read',
         'ajax' => true,
     ),
@@ -956,6 +963,38 @@ $functions = array(
         'type' => 'write',
         'capabilities' => 'moodle/grade:manage',
     ),
+    'core_grades_get_enrolled_users_for_search_widget' => array (
+        'classname' => 'core_grades\external\get_enrolled_users_for_search_widget',
+        'description' => '** DEPRECATED ** Please do not call this function any more. ' .
+            'Use core_grades_get_enrolled_users_for_selector instead. ' .
+            'Returns the enrolled users within and map some fields to the returned array of user objects.',
+        'type' => 'read',
+        'ajax' => true,
+        'services' => [MOODLE_OFFICIAL_MOBILE_SERVICE],
+    ),
+    'core_grades_get_enrolled_users_for_selector' => array (
+        'classname' => 'core_grades\external\get_enrolled_users_for_selector',
+        'description' => 'Returns the enrolled users within and map some fields to the returned array of user objects.',
+        'type' => 'read',
+        'ajax' => true,
+        'services' => [MOODLE_OFFICIAL_MOBILE_SERVICE],
+    ),
+    'core_grades_get_groups_for_search_widget' => [
+        'classname' => 'core_grades\external\get_groups_for_selector',
+        'description' => '** DEPRECATED ** Please do not call this function any more. ' .
+            'Use core_grades_get_groups_for_selector instead. ' .
+            'Get the group/(s) for a course',
+        'type' => 'read',
+        'ajax' => true,
+        'services' => [MOODLE_OFFICIAL_MOBILE_SERVICE],
+    ],
+    'core_grades_get_groups_for_selector' => [
+        'classname' => 'core_grades\external\get_groups_for_selector',
+        'description' => 'Get the group/(s) for a course',
+        'type' => 'read',
+        'ajax' => true,
+        'services' => [MOODLE_OFFICIAL_MOBILE_SERVICE],
+    ],
     'core_grading_get_definitions' => array(
         'classname' => 'core_grading_external',
         'methodname' => 'get_definitions',
@@ -2737,6 +2776,33 @@ $functions = array(
         'capabilities'  => '',
         'services'      => [MOODLE_OFFICIAL_MOBILE_SERVICE],
     ],
+    'core_xapi_post_state' => [
+        'classname' => 'core_xapi\external\post_state',
+        'classpath' => '',
+        'description' => 'Post an xAPI state into an activityId.',
+        'type' => 'write',
+        'ajax' => true,
+        'capabilities' => '',
+        'services' => [MOODLE_OFFICIAL_MOBILE_SERVICE],
+    ],
+    'core_xapi_get_state' => [
+        'classname' => 'core_xapi\external\get_state',
+        'classpath' => '',
+        'description' => 'Get an xAPI state data from an activityId.',
+        'type' => 'read',
+        'ajax' => true,
+        'capabilities' => '',
+        'services' => [MOODLE_OFFICIAL_MOBILE_SERVICE],
+    ],
+    'core_xapi_delete_state' => [
+        'classname' => 'core_xapi\external\delete_state',
+        'classpath' => '',
+        'description' => 'Delete an xAPI state data from an activityId.',
+        'type' => 'write',
+        'ajax' => true,
+        'capabilities' => '',
+        'services' => [MOODLE_OFFICIAL_MOBILE_SERVICE],
+    ],
     'core_contentbank_delete_content' => [
         'classname'     => 'core_contentbank\external\delete_content',
         'classpath'     => '',
@@ -2811,6 +2877,18 @@ $functions = array(
         'description' => 'Get custom report',
         'type'        => 'read',
         'ajax'        => true,
+    ],
+    'core_reportbuilder_list_reports' => [
+        'classname'   => 'core_reportbuilder\external\reports\listing',
+        'description' => 'List custom reports for current user',
+        'type'        => 'read',
+        'services'    => [MOODLE_OFFICIAL_MOBILE_SERVICE],
+    ],
+    'core_reportbuilder_retrieve_report' => [
+        'classname'   => 'core_reportbuilder\external\reports\retrieve',
+        'description' => 'Retrieve custom report content',
+        'type'        => 'read',
+        'services'    => [MOODLE_OFFICIAL_MOBILE_SERVICE],
     ],
     'core_reportbuilder_view_report' => [
         'classname'   => 'core_reportbuilder\external\reports\view',
@@ -2919,6 +2997,24 @@ $functions = array(
         'description' => 'Toggle state of report schedule',
         'type'        => 'write',
         'ajax'        => true,
+    ],
+    'core_admin_set_plugin_state' => [
+        'classname' => 'core_admin\external\set_plugin_state',
+        'description' => 'Set the state of a plugin',
+        'type' => 'write',
+        'ajax' => true,
+    ],
+    'core_admin_set_plugin_order' => [
+        'classname' => 'core_admin\external\set_plugin_order',
+        'description' => 'Set the order of a plugin',
+        'type' => 'write',
+        'ajax' => true,
+    ],
+    'core_admin_set_block_protection' => [
+        'classname' => 'core_admin\external\set_block_protection',
+        'description' => 'Set the protection state for a block plugin',
+        'type' => 'write',
+        'ajax' => true,
     ],
 );
 

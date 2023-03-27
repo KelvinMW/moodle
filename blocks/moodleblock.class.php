@@ -132,12 +132,8 @@ class block_base {
     function name() {
         // Returns the block name, as present in the class name,
         // the database, the block directory, etc etc.
-        static $myname;
-        if ($myname === NULL) {
-            $myname = strtolower(get_class($this));
-            $myname = substr($myname, strpos($myname, '_') + 1);
-        }
-        return $myname;
+        $myname = strtolower(get_class($this));
+        return substr($myname, strpos($myname, '_') + 1);
     }
 
     /**
@@ -282,7 +278,7 @@ class block_base {
      * Return an object containing all the block content to be returned by external functions.
      *
      * If your block is returning formatted content or provide files for download, you should override this method to use the
-     * external_format_text, external_format_string functions for formatting or external_util::get_area_files for files.
+     * \core_external\util::format_text, \core_external\util::format_string functions for formatting or external_util::get_area_files for files.
      *
      * @param  core_renderer $output the rendered used for output
      * @return stdClass      object containing the block title, central content, footer and linked files (if any).

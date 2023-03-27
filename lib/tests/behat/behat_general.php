@@ -28,6 +28,7 @@
 require_once(__DIR__ . '/../../behat/behat_base.php');
 
 use Behat\Gherkin\Node\TableNode;
+use Behat\Mink\Element\NodeElement;
 use Behat\Mink\Exception\DriverException;
 use Behat\Mink\Exception\ElementNotFoundException;
 use Behat\Mink\Exception\ExpectationException;
@@ -210,6 +211,22 @@ class behat_general extends behat_base {
         }
 
         $this->getSession()->switchToWindow($windowname);
+    }
+
+    /**
+     * Switches to a second window.
+     *
+     * @Given /^I switch to a second window$/
+     * @throws DriverException If there aren't exactly 2 windows open.
+     */
+    public function switch_to_second_window() {
+        $names = $this->getSession()->getWindowNames();
+
+        if (count($names) !== 2) {
+            throw new DriverException('Expected to see 2 windows open, found ' . count($names));
+        }
+
+        $this->getSession()->switchToWindow($names[1]);
     }
 
     /**
@@ -1091,9 +1108,6 @@ EOF;
      * @param string $taskname Name of task e.g. 'mod_whatever\task\do_something'
      */
     public function i_run_the_scheduled_task($taskname) {
-        global $CFG;
-        require_once("{$CFG->libdir}/cronlib.php");
-
         $task = \core\task\manager::get_scheduled_task($taskname);
         if (!$task) {
             throw new DriverException('The "' . $taskname . '" scheduled task does not exist');
@@ -1101,7 +1115,7 @@ EOF;
 
         // Do setup for cron task.
         raise_memory_limit(MEMORY_EXTRA);
-        cron_setup_user();
+        \core\cron::setup_user();
 
         // Get lock.
         $cronlockfactory = \core\lock\lock_config::get_lock_factory('cron');
@@ -1121,7 +1135,7 @@ EOF;
 
         try {
             // Prepare the renderer.
-            cron_prepare_core_renderer();
+            \core\cron::prepare_core_renderer();
 
             // Discard task output as not appropriate for Behat output!
             ob_start();
@@ -1129,13 +1143,13 @@ EOF;
             ob_end_clean();
 
             // Restore the previous renderer.
-            cron_prepare_core_renderer(true);
+            \core\cron::prepare_core_renderer(true);
 
             // Mark task complete.
             \core\task\manager::scheduled_task_complete($task);
         } catch (Exception $e) {
             // Restore the previous renderer.
-            cron_prepare_core_renderer(true);
+            \core\cron::prepare_core_renderer(true);
 
             // Mark task failed and throw exception.
             \core\task\manager::scheduled_task_failed($task);
@@ -1158,11 +1172,10 @@ EOF;
      * @throws DriverException
      */
     public function i_run_all_adhoc_tasks() {
-        global $CFG, $DB;
-        require_once("{$CFG->libdir}/cronlib.php");
+        global $DB;
 
         // Do setup for cron task.
-        cron_setup_user();
+        \core\cron::setup_user();
 
         // Discard task output as not appropriate for Behat output!
         ob_start();
@@ -1176,7 +1189,7 @@ EOF;
             ob_clean();
 
             // Run the task.
-            cron_run_inner_adhoc_task($task);
+            \core\cron::run_inner_adhoc_task($task);
 
             // Check whether the task record still exists.
             // If a task was successful it will be removed.
@@ -1201,19 +1214,12 @@ EOF;
      * @throws ElementNotFoundException Thrown by behat_base::find
      * @param string $element The locator of the specified selector
      * @param string $selectortype The selector type
-     * @param string $containerelement The container selector type
-     * @param string $containerselectortype The container locator
+     * @param NodeElement|string $containerelement The locator of the container selector
+     * @param string $containerselectortype The container selector type
      */
     public function should_exist_in_the($element, $selectortype, $containerelement, $containerselectortype) {
-        // Get the container node.
-        $containernode = $this->find($containerselectortype, $containerelement);
-
-        // Specific exception giving info about where can't we find the element.
-        $locatorexceptionmsg = "{$element} in the {$containerelement} {$containerselectortype}";
-        $exception = new ElementNotFoundException($this->getSession(), $selectortype, null, $locatorexceptionmsg);
-
-        // Looks for the requested node inside the container node.
-        $this->find($selectortype, $element, $exception, $containernode);
+        // Will throw an ElementNotFoundException if it does not exist.
+        $this->get_node_in_container($selectortype, $element, $containerselectortype, $containerelement);
     }
 
     /**
@@ -1225,8 +1231,8 @@ EOF;
      * @throws ExpectationException
      * @param string $element The locator of the specified selector
      * @param string $selectortype The selector type
-     * @param string $containerelement The container selector type
-     * @param string $containerselectortype The container locator
+     * @param NodeElement|string $containerelement The locator of the container selector
+     * @param string $containerselectortype The container selector type
      */
     public function should_not_exist_in_the($element, $selectortype, $containerelement, $containerselectortype) {
         // Get the container node.
@@ -1243,8 +1249,10 @@ EOF;
         }
 
         // The element was found and should not have been. Throw an exception.
+        $elementdescription = $this->get_selector_description($selectortype, $element);
+        $containerdescription = $this->get_selector_description($containerselectortype, $containerelement);
         throw new ExpectationException(
-            "The '{$element}' '{$selectortype}' exists in the '{$containerelement}' '{$containerselectortype}'",
+            "The {$elementdescription} exists in the {$containerdescription}",
             $this->getSession()
         );
     }
@@ -1776,7 +1784,17 @@ EOF;
      * @param   string $keys The key, or list of keys, to type
      */
     public function i_type(string $keys): void {
-        behat_base::type_keys($this->getSession(), str_split($keys));
+        // Certain keys, such as the newline character, must be converted to the appropriate character code.
+        // Without this, keys will behave differently depending on the browser.
+        $keylist = array_map(function($key): string {
+            switch ($key) {
+                case "\n":
+                    return behat_keys::ENTER;
+                default:
+                    return $key;
+            }
+        }, str_split($keys));
+        behat_base::type_keys($this->getSession(), $keylist);
     }
 
     /**
@@ -2134,6 +2152,39 @@ EOF;
     }
 
     /**
+     * Checks, that the specified element contains the specified node type a certain amount of times.
+     * When running Javascript tests it also considers that texts may be hidden.
+     *
+     * @Then /^I should see "(?P<elementscount_number>\d+)" node occurrences of type "(?P<node_type>(?:[^"]|\\")*)" in the "(?P<element_string>(?:[^"]|\\")*)" "(?P<text_selector_string>[^"]*)"$/
+     * @throws ElementNotFoundException
+     * @throws ExpectationException
+     * @param int    $elementscount How many occurrences of the element we look for.
+     * @param string $nodetype
+     * @param string $element Element we look in.
+     * @param string $selectortype The type of element where we are looking in.
+     */
+    public function i_should_see_node_occurrences_of_type_in_element(int $elementscount, string $nodetype, string $element, string $selectortype) {
+
+        // Getting the container where the text should be found.
+        $container = $this->get_selected_node($selectortype, $element);
+
+        $xpath = "/descendant-or-self::$nodetype [count(descendant::$nodetype) = 0]";
+
+        $nodes = $this->find_all('xpath', $xpath, false, $container);
+
+        if ($this->running_javascript()) {
+            $nodes = array_filter($nodes, function($node) {
+                return $node->isVisible();
+            });
+        }
+
+        if ($elementscount != count($nodes)) {
+            throw new ExpectationException('Found '.count($nodes).' elements in column. Expected '.$elementscount,
+                $this->getSession());
+        }
+    }
+
+    /**
      * Manually press enter key.
      *
      * @When /^I press enter/
@@ -2190,4 +2241,72 @@ EOF;
         $class = core_plugin_manager::resolve_plugininfo_class($plugintype);
         $class::enable_plugin($plugin, true);
     }
+
+    /**
+     * Set the default text editor to the named text editor.
+     *
+     * @Given the default editor is set to :editor
+     * @param string $editor
+     * @throws ExpectationException If the specified editor is not available.
+     */
+    public function the_default_editor_is_set_to(string $editor): void {
+        global $CFG;
+
+        // Check if the provided editor is available.
+        if (!array_key_exists($editor, editors_get_available())) {
+            throw new ExpectationException(
+                "Unable to set the editor to {$editor} as it is not installed. The available editors are: " .
+                    implode(', ', array_keys(editors_get_available())),
+                $this->getSession()
+            );
+        }
+
+        // Make the provided editor the default one in $CFG->texteditors by
+        // moving it to the first [editor],atto,tiny,textarea on the list.
+        $list = explode(',', $CFG->texteditors);
+        array_unshift($list, $editor);
+        $list = array_unique($list);
+
+        // Set the list new list of editors.
+        set_config('texteditors', implode(',', $list));
+    }
+
+    /**
+     * Allow to check for minimal Moodle version.
+     *
+     * @Given the site is running Moodle version :minversion or higher
+     * @param string $minversion The minimum version of Moodle required (inclusive).
+     */
+    public function the_site_is_running_moodle_version_or_higher(string $minversion): void {
+        global $CFG;
+        require_once($CFG->libdir . '/environmentlib.php');
+
+        $currentversion = normalize_version(get_config('', 'release'));
+
+        if (version_compare($currentversion, $minversion, '<')) {
+            throw new Moodle\BehatExtension\Exception\SkippedException(
+                'Site must be running Moodle version ' . $minversion . ' or higher'
+            );
+        }
+    }
+
+    /**
+     * Allow to check for maximum Moodle version.
+     *
+     * @Given the site is running Moodle version :maxversion or lower
+     * @param string $maxversion The maximum version of Moodle required (inclusive).
+     */
+    public function the_site_is_running_moodle_version_or_lower(string $maxversion): void {
+        global $CFG;
+        require_once($CFG->libdir . '/environmentlib.php');
+
+        $currentversion = normalize_version(get_config('', 'release'));
+
+        if (version_compare($currentversion, $maxversion, '>')) {
+            throw new Moodle\BehatExtension\Exception\SkippedException(
+                'Site must be running Moodle version ' . $maxversion . ' or lower'
+            );
+        }
+    }
+
 }

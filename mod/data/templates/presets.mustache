@@ -17,30 +17,34 @@
     Form containing all database presets displayed within a table.
 
     Context variables required for this template:
-    * formactionul - The form action url.
-    * d - The database id.
+    * formactionurl - The form action url.
+    * id - The database course module id (cmid).
     * presets - List of presets containing id, name, fullname, shortname and actions.
 
     Example context (json):
     {
-        "formactionul": "http://www.example.com",
-        "d": 1,
+        "formactionurl": "http://www.example.com",
+        "id": 1,
         "presets": [
             {
                 "id": 1,
+                "cmid": 1,
                 "name": "Image gallery",
                 "shortname": "imagegallery",
                 "fullname": "Image gallery",
                 "description": "Use this preset to collect images",
                 "userid": 0,
+                "url": "http://www.example.com",
                 "actions": []
             },
             {
                 "id": 2,
+                "cmid": 2,
                 "name": "Preset saved manually",
                 "shortname": "Preset saved manually",
                 "fullname": "Preset saved manually (admin)",
                 "userid": 2,
+                "url": "http://www.example.com",
                 "actions": []
             }
         ]
@@ -48,8 +52,8 @@
 }}
 {{#str}}presetshelp, mod_data{{/str}}
 
-<form method="post" action="{{formactionul}}" class="mt-4">
-    <input type="hidden" name="d" value="{{d}}">
+<form method="post" action="{{formactionurl}}" class="mt-4">
+    <input type="hidden" name="id" value="{{id}}">
     <input type="hidden" name="mode" value="usepreset">
     <input type="hidden" name="action" value="select">
 
@@ -59,16 +63,18 @@
                 <th class="pl-4 border-top-0" scope="col" style="width: 3%"></th>
                 <th class="pl-4 border-top-0" scope="col" style="width:30%">{{#str}} name {{/str}}</th>
                 <th class="pl-4 border-top-0" scope="col">{{#str}} description {{/str}}</th>
-                <th class="pl-4 border-top-0" scope="col" style="width: 3%">{{#showmanage}}{{#str}} action {{/str}}{{/showmanage}}</th>
+                <th class="pl-4 border-top-0" scope="col" style="width: 3%"></th>
             </tr>
         </thead>
         <tbody>
             {{#presets}}
             <tr>
                 <td class="p-4 border-right">
-                    <input type="radio" name="fullname" value="{{userid}}/{{shortname}}" />
+                    <input type="radio" name="fullname" value="{{userid}}/{{shortname}}" data-cmid="{{cmid}}" />
                 </td>
-                <td class="p-4">{{fullname}}</td>
+                <td class="p-4">
+                    <a href="{{{url}}}">{{fullname}}</a>
+                </td>
                 <td class="p-4">{{description}}</td>
                 <td class="p-4 preset_action_menu">
                     {{#actions}}
@@ -82,7 +88,18 @@
         </tbody>
     </table>
 
-    <input type="submit" name="selectpreset" value="{{#str}}usepreset, mod_data{{/str}}" class="btn btn-secondary mt-2 float-right" disabled>
+    {{< core/sticky_footer }}
+        {{$ stickycontent }}
+            <input
+                type="submit"
+                name="selectpreset"
+                data-action="selectpreset"
+                value="{{#str}}usepreset, mod_data{{/str}}"
+                class="btn btn-secondary"
+                disabled
+            >
+        {{/ stickycontent }}
+    {{/ core/sticky_footer }}
 </form>
 
 {{#js}}
@@ -90,8 +107,10 @@
         selectPreset.init();
     });
 
-
     require(['mod_data/editpreset'], function(editPreset) {
         editPreset.init();
+    });
+    require(['mod_data/importmappingdialogue'], function(importPreset) {
+        importPreset.init();
     });
 {{/js}}

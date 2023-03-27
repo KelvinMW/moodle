@@ -841,7 +841,7 @@ function question_move_category_to_context($categoryid, $oldcontextid, $newconte
 /**
  * Given a list of ids, load the basic information about a set of questions from
  * the questions table. The $join and $extrafields arguments can be used together
- * to pull in extra data. See, for example, the usage in mod/quiz/attemptlib.php, and
+ * to pull in extra data. See, for example, the usage in {@see \mod_quiz\quiz_attempt}, and
  * read the code below to see how the SQL is assembled. Throws exceptions on error.
  *
  * @param array $questionids array of question ids to load. If null, then all
@@ -940,23 +940,18 @@ function question_load_questions($questionids, $extrafields = '', $join = '') {
  * @param stdClass[]|null $filtercourses The courses to filter the course tags by.
  */
 function _tidy_question($question, $category, array $tagobjects = null, array $filtercourses = null): void {
-    // Load question-type specific fields.
-    if (!question_bank::is_qtype_installed($question->qtype)) {
-        $question->questiontext = html_writer::tag('p', get_string('warningmissingtype',
-                'qtype_missingtype')) . $question->questiontext;
-    }
-
-    // Convert numeric fields to float (Prevents these being displayed as 1.0000000.).
+    // Convert numeric fields to float. This prevents these being displayed as 1.0000000.
     $question->defaultmark += 0;
     $question->penalty += 0;
 
+    // Indicate the question is now fully initialised.
     if (isset($question->_partiallyloaded)) {
         unset($question->_partiallyloaded);
     }
 
     $question->categoryobject = $category;
-    question_bank::get_qtype($question->qtype)->get_question_options($question);
 
+    // Add any tags we have been passed.
     if (!is_null($tagobjects)) {
         $categorycontext = context::instance_by_id($category->contextid);
         $sortedtagobjects = question_sort_tags($tagobjects, $categorycontext, $filtercourses);
@@ -964,6 +959,14 @@ function _tidy_question($question, $category, array $tagobjects = null, array $f
         $question->coursetags = $sortedtagobjects->coursetags;
         $question->tagobjects = $sortedtagobjects->tagobjects;
         $question->tags = $sortedtagobjects->tags;
+    }
+
+    // Load question-type specific fields.
+    if (question_bank::is_qtype_installed($question->qtype)) {
+        question_bank::get_qtype($question->qtype)->get_question_options($question);
+    } else {
+        $question->questiontext = html_writer::tag('p', get_string('warningmissingtype',
+                'qtype_missingtype')) . $question->questiontext;
     }
 }
 
@@ -1979,7 +1982,7 @@ function core_question_find_next_unused_idnumber(?string $oldidnumber, int $cate
     global $DB;
 
     // The the old idnumber is not of the right form, bail now.
-    if (!preg_match('~\d+$~', $oldidnumber, $matches)) {
+    if ($oldidnumber === null || !preg_match('~\d+$~', $oldidnumber, $matches)) {
         return null;
     }
 
