@@ -56,7 +56,7 @@ class item_result_test extends advanced_testcase {
     /**
      * Return a generic data to create a valid item.
      *
-     * @return sdtClass the creation data
+     * @return \stdClass the creation data
      */
     private function get_generic_data(): \stdClass {
         return (object) [
@@ -98,7 +98,7 @@ class item_result_test extends advanced_testcase {
      *
      * @return array
      */
-    public function duration_values_data() : array {
+    public function duration_values_data(): array {
         return [
             'No duration' => [
                 null, null, false

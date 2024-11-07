@@ -14,8 +14,18 @@
         "allowedlevel2": true,
         "allowedspread": false
     },
+    "aiactions": {
+        "component": "core_ai",
+        "allowedlevel2": true,
+        "allowedspread": false
+    },
     "analytics": {
         "component": "core_analytics",
+        "allowedlevel2": true,
+        "allowedspread": true
+    },
+    "attribute": {
+        "component": "core",
         "allowedlevel2": true,
         "allowedspread": true
     },
@@ -64,6 +74,11 @@
         "allowedlevel2": true,
         "allowedspread": true
     },
+    "context": {
+        "component": "core",
+        "allowedlevel2": true,
+        "allowedspread": false
+    },
     "core": {
         "component": null,
         "allowedlevel2": false,
@@ -90,6 +105,11 @@
         "allowedspread": false
     },
     "event": {
+        "component": "core",
+        "allowedlevel2": true,
+        "allowedspread": true
+    },
+    "exception": {
         "component": "core",
         "allowedlevel2": true,
         "allowedspread": true
@@ -129,6 +149,11 @@
         "allowedlevel2": true,
         "allowedspread": true
     },
+    "hook": {
+        "component": "core",
+        "allowedlevel2": true,
+        "allowedspread": true
+    },
     "lock": {
         "component": "core",
         "allowedlevel2": true,
@@ -148,6 +173,11 @@
         "component": "core_message",
         "allowedlevel2": true,
         "allowedspread": true
+    },
+    "moodlenet": {
+        "component": "core",
+        "allowedlevel2": false,
+        "allowedspread": false
     },
     "navigation": {
         "component": "core",
@@ -204,8 +234,23 @@
         "allowedlevel2": false,
         "allowedspread": false
     },
+    "redactor": {
+        "component": "core_files",
+        "allowedlevel2": true,
+        "allowedspread": false
+    },
     "reportbuilder": {
         "component": "core_reportbuilder",
+        "allowedlevel2": true,
+        "allowedspread": true
+    },
+    "route": {
+        "component": "core",
+        "allowedlevel2": true,
+        "allowedspread": true
+    },
+    "router": {
+        "component": "core",
         "allowedlevel2": true,
         "allowedspread": true
     },

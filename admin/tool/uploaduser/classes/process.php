@@ -110,7 +110,7 @@ class process {
      * @param string|null $progresstrackerclass
      * @throws \coding_exception
      */
-    public function __construct(\csv_import_reader $cir, string $progresstrackerclass = null) {
+    public function __construct(\csv_import_reader $cir, ?string $progresstrackerclass = null) {
         $this->cir = $cir;
         if ($progresstrackerclass) {
             if (!class_exists($progresstrackerclass) || !is_subclass_of($progresstrackerclass, \uu_progress_tracker::class)) {
@@ -126,7 +126,6 @@ class process {
         $today = make_timestamp(date('Y', $today), date('m', $today), date('d', $today), 0, 0, 0);
         $this->today = $today;
 
-        $this->rolecache      = uu_allowed_roles_cache(); // Course roles lookup cache.
         $this->sysrolecache   = uu_allowed_sysroles_cache(); // System roles lookup cache.
         $this->supportedauths = uu_supported_auths(); // Officially supported plugins that are enabled.
 
@@ -462,9 +461,22 @@ class process {
             return;
         }
 
-        $matchparam = $this->get_match_on_email() ? ['email' => $user->email] : ['username' => $user->username];
-        if ($existinguser = $DB->get_records('user', $matchparam + ['mnethostid' => $user->mnethostid])) {
-            if (is_array($existinguser) && count($existinguser) !== 1) {
+        if ($this->get_match_on_email()) {
+            // Case-insensitive query for the given email address.
+            $userselect = $DB->sql_equal('email', ':email', false);
+            $userparams = ['email' => $user->email];
+        } else {
+            $userselect = 'username = :username';
+            $userparams = ['username' => $user->username];
+        }
+
+        // Match the user, also accounting for multiple records by email.
+        $existinguser = $DB->get_records_select('user', "{$userselect} AND mnethostid = :mnethostid",
+            $userparams + ['mnethostid' => $user->mnethostid]);
+        $existingusercount = count($existinguser);
+
+        if ($existingusercount > 0) {
+            if ($existingusercount !== 1) {
                 $this->upt->track('status', get_string('duplicateemail', 'tool_uploaduser', $user->email), 'warning');
                 $this->userserrors++;
                 return;
@@ -676,6 +688,17 @@ class process {
                 break;
 
             case UU_USER_ADD_UPDATE:
+                if ($this->get_match_on_email()) {
+                    if ($usersbyname = $DB->get_records('user', ['username' => $user->username])) {
+                        foreach ($usersbyname as $userbyname) {
+                            if (strtolower($userbyname->email) != strtolower($user->email)) {
+                                $this->usersskipped++;
+                                $this->upt->track('status', get_string('usernotaddedusernameexists', 'error'), 'warning');
+                                $skip = true;
+                            }
+                        }
+                    }
+                }
                 break;
 
             case UU_USER_UPDATE:
@@ -908,7 +931,7 @@ class process {
             }
 
             if ($dologout) {
-                \core\session\manager::kill_user_sessions($existinguser->id);
+                \core\session\manager::destroy_user_sessions($existinguser->id);
             }
 
         } else {
@@ -1209,14 +1232,18 @@ class process {
                 }
             }
 
+            if (!array_key_exists($courseid, $this->rolecache)) {
+                $this->rolecache[$courseid] = uu_allowed_roles_cache(null, (int)$courseid);
+            }
+
             if ($courseid == SITEID) {
                 // Technically frontpage does not have enrolments, but only role assignments,
                 // let's not invent new lang strings here for this rarely used feature.
 
                 if (!empty($user->{'role'.$i})) {
                     $rolename = $user->{'role'.$i};
-                    if (array_key_exists($rolename, $this->rolecache)) {
-                        $roleid = $this->rolecache[$rolename]->id;
+                    if (array_key_exists($rolename, $this->rolecache[$courseid]) ) {
+                        $roleid = $this->rolecache[$courseid][$rolename]->id;
                     } else {
                         $this->upt->track('enrolments', get_string('unknownrole', 'error', s($rolename)), 'error');
                         continue;
@@ -1226,7 +1253,7 @@ class process {
 
                     $a = new \stdClass();
                     $a->course = $shortname;
-                    $a->role   = $this->rolecache[$roleid]->name;
+                    $a->role = $this->rolecache[$courseid][$roleid]->name;
                     $this->upt->track('enrolments', get_string('enrolledincourserole', 'enrol_manual', $a), 'info');
                 }
 
@@ -1236,8 +1263,8 @@ class process {
                 $roleid = false;
                 if (!empty($user->{'role'.$i})) {
                     $rolename = $user->{'role'.$i};
-                    if (array_key_exists($rolename, $this->rolecache)) {
-                        $roleid = $this->rolecache[$rolename]->id;
+                    if (array_key_exists($rolename, $this->rolecache[$courseid])) {
+                        $roleid = $this->rolecache[$courseid][$rolename]->id;
                     } else {
                         $this->upt->track('enrolments', get_string('unknownrole', 'error', s($rolename)), 'error');
                         continue;
@@ -1256,7 +1283,15 @@ class process {
                     }
                 } else {
                     // No role specified, use the default from manual enrol plugin.
-                    $roleid = $this->manualcache[$courseid]->roleid;
+                    $defaultenrolroleid = (int)$this->manualcache[$courseid]->roleid;
+                    // Validate the current user can assign this role.
+                    if (array_key_exists($defaultenrolroleid, $this->rolecache[$courseid]) ) {
+                        $roleid = $defaultenrolroleid;
+                    } else {
+                        $role = $DB->get_record('role', ['id' => $defaultenrolroleid]);
+                        $this->upt->track('enrolments', get_string('unknownrole', 'error', s($role->shortname)), 'error');
+                        continue;
+                    }
                 }
 
                 if ($roleid) {
@@ -1299,7 +1334,7 @@ class process {
 
                     $a = new \stdClass();
                     $a->course = $shortname;
-                    $a->role   = $this->rolecache[$roleid]->name;
+                    $a->role = $this->rolecache[$courseid][$roleid]->name;
                     $this->upt->track('enrolments', get_string('enrolledincourserole', 'enrol_manual', $a), 'info');
                 }
             }
@@ -1360,8 +1395,14 @@ class process {
                 }
             }
         }
+
+        // Warn user about invalid data values.
         if (($invalid = \core_user::validate($user)) !== true) {
-            $this->upt->track('status', get_string('invaliduserdata', 'tool_uploaduser', s($user->username)), 'warning');
+            $listseparator = get_string('listsep', 'langconfig') . ' ';
+            $this->upt->track('status', get_string('invaliduserdatavalues', 'tool_uploaduser', [
+                'username' => s($user->username),
+                'values' => implode($listseparator, array_keys($invalid)),
+            ]), 'warning');
         }
     }
 

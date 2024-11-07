@@ -46,6 +46,7 @@ class contentbank_content_uploaded_test extends \advanced_testcase {
 
         require_once($CFG->dirroot . '/contentbank/tests/fixtures/testable_contenttype.php');
         require_once($CFG->dirroot . '/contentbank/tests/fixtures/testable_content.php');
+        parent::setUpBeforeClass();
     }
 
     /**
@@ -53,7 +54,7 @@ class contentbank_content_uploaded_test extends \advanced_testcase {
      *
      * @covers ::create_from_record
      */
-    public function test_content_created() {
+    public function test_content_created(): void {
         global $USER, $CFG;
 
         $this->resetAfterTest();
@@ -69,7 +70,7 @@ class contentbank_content_uploaded_test extends \advanced_testcase {
             'filepath' => '/',
             'filename' => 'dummy_h5p.h5p'
         );
-        $path = $CFG->dirroot . '/h5p/tests/fixtures/greeting-card-887.h5p';
+        $path = $CFG->dirroot . '/h5p/tests/fixtures/greeting-card.h5p';
         $dummyh5pfile = \core_h5p\helper::create_fake_stored_file_from_path($path);
 
         // Trigger and capture the event when creating content from a file.

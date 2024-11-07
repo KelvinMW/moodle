@@ -103,10 +103,9 @@ function is_moodle_cookie_secure() {
 }
 
 /**
- * Sets a moodle cookie with a weakly encrypted username
+ * Sets a Moodle cookie with an encrypted username
  *
  * @param string $username to encrypt and place in a cookie, '' means delete current cookie
- * @return void
  */
 function set_moodle_cookie($username) {
     global $CFG;
@@ -134,12 +133,13 @@ function set_moodle_cookie($username) {
 
     if ($username !== '') {
         // Set username cookie for 60 days.
-        setcookie($cookiename, rc4encrypt($username), time() + (DAYSECS * 60), $CFG->sessioncookiepath, $CFG->sessioncookiedomain, $cookiesecure, $CFG->cookiehttponly);
+        setcookie($cookiename, \core\encryption::encrypt($username), time() + (DAYSECS * 60), $CFG->sessioncookiepath,
+            $CFG->sessioncookiedomain, $cookiesecure, $CFG->cookiehttponly);
     }
 }
 
 /**
- * Gets a moodle cookie with a weakly encrypted username
+ * Gets a Moodle cookie with an encrypted username
  *
  * @return string username
  */
@@ -156,40 +156,14 @@ function get_moodle_cookie() {
 
     $cookiename = 'MOODLEID1_'.$CFG->sessioncookie;
 
-    if (empty($_COOKIE[$cookiename])) {
-        return '';
-    } else {
-        $username = rc4decrypt($_COOKIE[$cookiename]);
-        if ($username === 'guest' or $username === 'nobody') {
+    try {
+        $username = \core\encryption::decrypt($_COOKIE[$cookiename] ?? '');
+        if ($username === 'guest' || $username === 'nobody') {
             // backwards compatibility - we do not set these cookies any more
             $username = '';
         }
         return $username;
+    } catch (\moodle_exception $ex) {
+        return '';
     }
-}
-
-/**
- * Sets up current user and course environment (lang, etc.) in cron.
- * Do not use outside of cron script!
- *
- * @param stdClass $user full user object, null means default cron user (admin),
- *                 value 'reset' means reset internal static caches.
- * @param stdClass $course full course record, null means $SITE
- * @param bool $leavepagealone If specified, stops it messing with global page object
- * @deprecated since 4.2. Use \core\core::setup_user() instead.
- * @return void
- */
-function cron_setup_user($user = null, $course = null, $leavepagealone = false) {
-    debugging(
-        'The cron_setup_user() function is deprecated. ' .
-        'Please use \core\cron::setup_user() and reset_user_cache() as appropriate instead.',
-        DEBUG_DEVELOPER
-    );
-
-    if ($user === 'reset') {
-        \core\cron::reset_user_cache();
-        return;
-    }
-
-    \core\cron::setup_user($user, $course, $leavepagealone);
 }

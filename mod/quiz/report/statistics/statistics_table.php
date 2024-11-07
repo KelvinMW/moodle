@@ -137,7 +137,7 @@ class quiz_statistics_table extends flexible_table {
     /**
      * Open a div tag to wrap statistics table.
      */
-    public function  wrap_html_start() {
+    public function wrap_html_start() {
         // Horrible Moodle 2.0 wide-content work-around.
         if (!$this->is_downloading()) {
             echo html_writer::start_tag('div', ['id' => 'tablecontainer',
@@ -204,12 +204,8 @@ class quiz_statistics_table extends flexible_table {
         } else if ($questionstat->question->qtype === 'missingtype') {
             return '';
         } else {
-            $random = null;
-            if ($questionstat->question->qtype === 'random') {
-                $random = true;
-            }
             return quiz_question_action_icons($this->quiz, $this->cmid,
-                    $questionstat->question, $this->baseurl, $questionstat->variant, $random);
+                    $questionstat->question, $this->baseurl, $questionstat->variant);
         }
     }
 
@@ -520,7 +516,7 @@ class quiz_statistics_table extends flexible_table {
      * @param string|null $max The maximum value in the range
      * @return string
      */
-    protected function format_range(string $min = null, string $max = null) {
+    protected function format_range(?string $min = null, ?string $max = null) {
         if (is_null($min) && is_null($max)) {
             return '';
         } else {
@@ -556,7 +552,7 @@ class quiz_statistics_table extends flexible_table {
      * @param int $decimals Sets the number of decimal points
      * @return string A formatted string that represents a range between $min to $max.
      */
-    protected function format_percentage_range(float $min = null, float $max = null, bool $fraction = true, int $decimals = 2) {
+    protected function format_percentage_range(?float $min = null, ?float $max = null, bool $fraction = true, int $decimals = 2) {
         if (is_null($min) && is_null($max)) {
             return '';
         } else {

@@ -44,6 +44,7 @@ class contentbank_content_created_test extends \advanced_testcase {
 
         require_once($CFG->dirroot . '/contentbank/tests/fixtures/testable_contenttype.php');
         require_once($CFG->dirroot . '/contentbank/tests/fixtures/testable_content.php');
+        parent::setUpBeforeClass();
     }
 
     /**
@@ -51,7 +52,7 @@ class contentbank_content_created_test extends \advanced_testcase {
      *
      * @covers ::create_from_record
      */
-    public function test_content_created() {
+    public function test_content_created(): void {
 
         $this->resetAfterTest();
         $this->setAdminUser();
@@ -63,6 +64,7 @@ class contentbank_content_created_test extends \advanced_testcase {
         $sink = $this->redirectEvents();
 
         // Create a content bank content.
+        /** @var \core_contentbank_generator $generator */
         $generator = $this->getDataGenerator()->get_plugin_generator('core_contentbank');
         $contents = $generator->generate_contentbank_data('contenttype_testable', 1);
         $content = array_shift($contents);

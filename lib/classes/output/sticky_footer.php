@@ -16,8 +16,6 @@
 
 namespace core\output;
 
-use renderable;
-
 /**
  * Class to render a sticky footer element.
  *
@@ -35,7 +33,6 @@ use renderable;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class sticky_footer implements named_templatable, renderable {
-
     /**
      * @var string content of the sticky footer.
      */
@@ -114,7 +111,7 @@ class sticky_footer implements named_templatable, renderable {
     /**
      * Export this data so it can be used as the context for a mustache template (core/inplace_editable).
      *
-     * @param renderer_base $output typically, the renderer that's calling this function
+     * @param \renderer_base $output typically, the renderer that's calling this function
      * @return array data context for a mustache template
      */
     public function export_for_template(\renderer_base $output) {

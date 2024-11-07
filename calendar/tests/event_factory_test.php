@@ -50,7 +50,7 @@ class event_factory_test extends \advanced_testcase {
         callable $bailoutcheck,
         $expectedclass,
         $expectedattributevalue
-    ) {
+    ): void {
         $this->resetAfterTest(true);
         $this->setAdminUser();
         $event = $this->create_event();
@@ -75,14 +75,17 @@ class event_factory_test extends \advanced_testcase {
         }
 
         if ($expectedattributevalue) {
-            $this->assertEquals($instance->testattribute, $expectedattributevalue);
+            $this->assertEquals(
+                $instance->get_description()->get_value(),
+                $expectedattributevalue
+            );
         }
     }
 
     /**
      * Test invalid callback exception.
      */
-    public function test_invalid_action_callback() {
+    public function test_invalid_action_callback(): void {
         $this->resetAfterTest(true);
         $this->setAdminUser();
         $event = $this->create_event();
@@ -132,7 +135,7 @@ class event_factory_test extends \advanced_testcase {
     /**
      * Test invalid callback exception.
      */
-    public function test_invalid_visibility_callback() {
+    public function test_invalid_visibility_callback(): void {
         $this->resetAfterTest(true);
         $this->setAdminUser();
         $event = $this->create_event();
@@ -182,7 +185,7 @@ class event_factory_test extends \advanced_testcase {
     /**
      * Test invalid callback exception.
      */
-    public function test_invalid_bail_callback() {
+    public function test_invalid_bail_callback(): void {
         $this->resetAfterTest(true);
         $this->setAdminUser();
         $event = $this->create_event();
@@ -232,7 +235,7 @@ class event_factory_test extends \advanced_testcase {
     /**
      * Test the factory's course cache.
      */
-    public function test_course_cache() {
+    public function test_course_cache(): void {
         $this->resetAfterTest(true);
         $this->setAdminUser();
         $course = self::getDataGenerator()->create_course();
@@ -285,7 +288,7 @@ class event_factory_test extends \advanced_testcase {
     /**
      * Test the factory's module cache.
      */
-    public function test_module_cache() {
+    public function test_module_cache(): void {
         $this->resetAfterTest(true);
         $this->setAdminUser();
         $course = self::getDataGenerator()->create_course();
@@ -368,7 +371,6 @@ class event_factory_test extends \advanced_testcase {
                     'location' => 'Test location',
                 ],
                 'actioncallbackapplier' => function(event_interface $event) {
-                    $event->testattribute = 'Hello';
                     return $event;
                 },
                 'visibilitycallbackapplier' => function(event_interface $event) {
@@ -403,7 +405,6 @@ class event_factory_test extends \advanced_testcase {
                     'location' => 'Test location',
                 ],
                 'actioncallbackapplier' => function(event_interface $event) {
-                    $event->testattribute = 'Hello';
                     return $event;
                 },
                 'visibilitycallbackapplier' => function(event_interface $event) {
@@ -438,7 +439,6 @@ class event_factory_test extends \advanced_testcase {
                     'location' => 'Test location',
                 ],
                 'actioncallbackapplier' => function(event_interface $event) {
-                    $event->testattribute = 'Hello';
                     return $event;
                 },
                 'visibilitycallbackapplier' => function(event_interface $event) {

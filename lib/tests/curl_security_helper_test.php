@@ -37,7 +37,7 @@ class curl_security_helper_test extends \advanced_testcase {
      * @param bool $expected the expected result.
      * @dataProvider curl_security_url_data_provider
      */
-    public function test_curl_security_helper_url_is_blocked($dns, $url, $blockedhosts, $allowedports, $expected) {
+    public function test_curl_security_helper_url_is_blocked($dns, $url, $blockedhosts, $allowedports, $expected): void {
         $this->resetAfterTest(true);
         $helper = $this->getMockBuilder('\core\files\curl_security_helper')
             ->onlyMethods(['get_host_list_by_name'])
@@ -135,6 +135,11 @@ class curl_security_helper_test extends \advanced_testcase {
             // Test when DNS resolution fails.
             [[], "http://example.com", "127.0.0.1", "", true],
 
+            // Test ensures that the default value of getremoteaddr() 0.0.0.0 will check against the provided blocked list.
+            [$simpledns, "http://0.0.0.0/x.png", "0.0.0.0", "", true],
+            // Test set using IPV4 with integer format.
+            [$simpledns, "http://2852039166/x.png", "169.254.169.254", "", true],
+
             // Test some freaky deaky Unicode domains. Should be blocked always.
             [$simpledns, "http://169。254。169。254/", "127.0.0.1", "", true],
             [$simpledns, "http://169。254。169。254/", "1.2.3.4", "", true],
@@ -162,7 +167,7 @@ class curl_security_helper_test extends \advanced_testcase {
      * @param bool $expected the expected result.
      * @dataProvider curl_security_settings_data_provider
      */
-    public function test_curl_security_helper_is_enabled($blockedhosts, $allowedports, $expected) {
+    public function test_curl_security_helper_is_enabled($blockedhosts, $allowedports, $expected): void {
         $this->resetAfterTest(true);
         $helper = new \core\files\curl_security_helper();
         set_config('curlsecurityblockedhosts', $blockedhosts);
@@ -194,7 +199,7 @@ class curl_security_helper_test extends \advanced_testcase {
      * @param bool $expected the expected result.
      * @dataProvider curl_security_host_data_provider
      */
-    public function test_curl_security_helper_host_is_blocked($host, $blockedhosts, $expected) {
+    public function test_curl_security_helper_host_is_blocked($host, $blockedhosts, $expected): void {
         $this->resetAfterTest(true);
         $helper = new \core\files\curl_security_helper();
         set_config('curlsecurityblockedhosts', $blockedhosts);
@@ -248,7 +253,7 @@ class curl_security_helper_test extends \advanced_testcase {
      * @param bool $expected the expected result.
      * @dataProvider curl_security_port_data_provider
      */
-    public function test_curl_security_helper_port_is_blocked($port, $allowedports, $expected) {
+    public function test_curl_security_helper_port_is_blocked($port, $allowedports, $expected): void {
         $this->resetAfterTest(true);
         $helper = new \core\files\curl_security_helper();
         set_config('curlsecurityallowedport', $allowedports);
@@ -284,7 +289,7 @@ class curl_security_helper_test extends \advanced_testcase {
     /**
      * Test for \core\files\curl_security_helper::get_blocked_url_string().
      */
-    public function test_curl_security_helper_get_blocked_url_string() {
+    public function test_curl_security_helper_get_blocked_url_string(): void {
         $helper = new \core\files\curl_security_helper();
         $this->assertEquals(get_string('curlsecurityurlblocked', 'admin'), $helper->get_blocked_url_string());
     }

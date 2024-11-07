@@ -120,11 +120,12 @@ class cron {
 
         do {
             $startruntime = microtime();
+
             // Run all scheduled tasks.
-            self::run_scheduled_tasks($timenow);
+            self::run_scheduled_tasks(time(), $timenow);
 
             // Run adhoc tasks.
-            self::run_adhoc_tasks($timenow);
+            self::run_adhoc_tasks(time(), 0, true, $timenow);
 
             mtrace("Cron run completed correctly");
 
@@ -163,14 +164,22 @@ class cron {
     /**
      * Execute all queued scheduled tasks, applying necessary concurrency limits and time limits.
      *
-     * @param   int     $timenow The time this process started.
+     * @param   int       $startruntime The time this run started.
+     * @param   null|int  $startprocesstime The time the process that owns this runner started.
      * @throws \moodle_exception
      */
-    public static function run_scheduled_tasks(int $timenow): void {
+    public static function run_scheduled_tasks(
+        int $startruntime,
+        ?int $startprocesstime = null,
+    ): void {
         // Allow a restriction on the number of scheduled task runners at once.
         $cronlockfactory = \core\lock\lock_config::get_lock_factory('cron');
         $maxruns = get_config('core', 'task_scheduled_concurrency_limit');
         $maxruntime = get_config('core', 'task_scheduled_max_runtime');
+
+        if ($startprocesstime === null) {
+            $startprocesstime = $startruntime;
+        }
 
         $scheduledlock = null;
         for ($run = 0; $run < $maxruns; $run++) {
@@ -193,8 +202,8 @@ class cron {
         try {
             while (
                 !\core\local\cli\shutdown::should_gracefully_exit() &&
-                !\core\task\manager::static_caches_cleared_since($timenow) &&
-                $task = \core\task\manager::get_next_scheduled_task($timenow)
+                !\core\task\manager::static_caches_cleared_since($startprocesstime) &&
+                $task = \core\task\manager::get_next_scheduled_task($startruntime)
             ) {
                 self::run_inner_scheduled_task($task);
                 unset($task);
@@ -213,16 +222,30 @@ class cron {
     /**
      * Execute all queued adhoc tasks, applying necessary concurrency limits and time limits.
      *
-     * @param   int     $timenow The time this process started.
+     * @param   int     $startruntime The time this run started.
      * @param   int     $keepalive Keep this public static function alive for N seconds and poll for new adhoc tasks.
      * @param   bool    $checklimits Should we check limits?
+     * @param   null|int $startprocesstime The time this process started.
+     * @param   int|null $maxtasks Limit number of tasks to run`
+     * @param   null|string $classname Run only tasks of this class
      * @throws \moodle_exception
      */
-    public static function run_adhoc_tasks(int $timenow, $keepalive = 0, $checklimits = true) {
+    public static function run_adhoc_tasks(
+        int $startruntime,
+        $keepalive = 0,
+        $checklimits = true,
+        ?int $startprocesstime = null,
+        ?int $maxtasks = null,
+        ?string $classname = null,
+    ): void {
         // Allow a restriction on the number of adhoc task runners at once.
         $cronlockfactory = \core\lock\lock_config::get_lock_factory('cron');
         $maxruns = get_config('core', 'task_adhoc_concurrency_limit');
         $maxruntime = get_config('core', 'task_adhoc_max_runtime');
+
+        if ($startprocesstime === null) {
+            $startprocesstime = $startruntime;
+        }
 
         $adhoclock = null;
         if ($checklimits) {
@@ -241,18 +264,18 @@ class cron {
             }
         }
 
-        $humantimenow = date('r', $timenow);
-        $finishtime = $timenow + $keepalive;
+        $humantimenow = date('r', $startruntime);
+        $finishtime = $startruntime + $keepalive;
         $waiting = false;
         $taskcount = 0;
 
         // Run all adhoc tasks.
         while (
             !\core\local\cli\shutdown::should_gracefully_exit() &&
-            !\core\task\manager::static_caches_cleared_since($timenow)
+            !\core\task\manager::static_caches_cleared_since($startprocesstime)
         ) {
 
-            if ($checklimits && (time() - $timenow) >= $maxruntime) {
+            if ($checklimits && (time() - $startruntime) >= $maxruntime) {
                 if ($waiting) {
                     $waiting = false;
                     mtrace('');
@@ -262,7 +285,7 @@ class cron {
             }
 
             try {
-                $task = \core\task\manager::get_next_adhoc_task(time(), $checklimits);
+                $task = \core\task\manager::get_next_adhoc_task(time(), $checklimits, $classname);
             } catch (\Throwable $e) {
                 if ($adhoclock) {
                     // Release the adhoc task runner lock.
@@ -279,6 +302,9 @@ class cron {
                 self::run_inner_adhoc_task($task);
                 self::set_process_title("Waiting for next adhoc task");
                 $taskcount++;
+                if ($maxtasks && $taskcount >= $maxtasks) {
+                    break;
+                }
                 unset($task);
             } else {
                 $timeleft = $finishtime - time();
@@ -309,6 +335,44 @@ class cron {
     }
 
     /**
+     * Execute an adhoc task.
+     *
+     * @param   int       $taskid
+     */
+    public static function run_adhoc_task(int $taskid): void {
+        $task = \core\task\manager::get_adhoc_task($taskid);
+        if (!$task->get_fail_delay() && $task->get_next_run_time() > time()) {
+            throw new \moodle_exception('wontrunfuturescheduledtask');
+        }
+
+        self::run_inner_adhoc_task($task);
+        self::set_process_title("Running adhoc task $taskid");
+    }
+
+    /**
+     * Execute all failed adhoc tasks.
+     *
+     * @param string|null  $classname Run only tasks of this class
+     */
+    public static function run_failed_adhoc_tasks(?string $classname = null): void {
+        global $DB;
+
+        $where = 'faildelay > 0';
+        $params = [];
+        if ($classname) {
+            $where .= ' AND classname = :classname';
+            $params['classname'] = \core\task\manager::get_canonical_class_name($classname);
+        }
+
+        // Only rerun the failed tasks that allow to be re-tried or have the remaining attempts available.
+        $where .= ' AND (attemptsavailable > 0 OR attemptsavailable IS NULL)';
+        $tasks = $DB->get_records_sql("SELECT * from {task_adhoc} WHERE $where", $params);
+        foreach ($tasks as $t) {
+            self::run_adhoc_task($t->id);
+        }
+    }
+
+    /**
      * Shared code that handles running of a single scheduled task within the cron.
      *
      * Not intended for calling directly outside of this library!
@@ -318,6 +382,8 @@ class cron {
     public static function run_inner_scheduled_task(\core\task\task_base $task) {
         global $CFG, $DB;
         $debuglevel = $CFG->debug;
+        $debugdisplay = $CFG->debugdisplay;
+        $CFG->debugdisplay = 1;
 
         \core\task\manager::scheduled_task_starting($task);
         \core\task\logmanager::start_logging($task);
@@ -329,13 +395,17 @@ class cron {
         $predbqueries = null;
         $predbqueries = $DB->perf_get_queries();
         $pretime = microtime(1);
+
+        // Ensure that we have a clean session with the correct cron user.
+        self::setup_user();
+
         try {
             get_mailer('buffer');
             self::prepare_core_renderer();
             // Temporarily increase debug level if task has failed and debugging isn't already at maximum.
             if ($debuglevel !== DEBUG_DEVELOPER && $faildelay = $task->get_fail_delay()) {
                 mtrace('Debugging increased temporarily due to faildelay of ' . $faildelay);
-                set_debugging(DEBUG_DEVELOPER);
+                set_debugging(DEBUG_DEVELOPER, 1);
             }
             $task->execute();
             if ($DB->is_transaction_started()) {
@@ -371,6 +441,10 @@ class cron {
             if ($CFG->debug !== $debuglevel) {
                 set_debugging($debuglevel);
             }
+
+            // Reset debugdisplay back.
+            $CFG->debugdisplay = $debugdisplay;
+
             // Reset back to the standard admin user.
             self::setup_user();
             self::set_process_title('Waiting for next scheduled task');
@@ -387,6 +461,8 @@ class cron {
     public static function run_inner_adhoc_task(\core\task\adhoc_task $task) {
         global $CFG, $DB;
         $debuglevel = $CFG->debug;
+        $debugdisplay = $CFG->debugdisplay;
+        $CFG->debugdisplay = 1;
 
         \core\task\manager::adhoc_task_starting($task);
         \core\task\logmanager::start_logging($task);
@@ -427,6 +503,9 @@ class cron {
             }
 
             self::setup_user($user);
+        } else {
+            // No user specified, ensure that we have a clean session with the correct cron user.
+            self::setup_user();
         }
 
         try {
@@ -435,7 +514,7 @@ class cron {
             // Temporarily increase debug level if task has failed and debugging isn't already at maximum.
             if ($debuglevel !== DEBUG_DEVELOPER && $faildelay = $task->get_fail_delay()) {
                 mtrace('Debugging increased temporarily due to faildelay of ' . $faildelay);
-                set_debugging(DEBUG_DEVELOPER);
+                set_debugging(DEBUG_DEVELOPER, 1);
             }
             $task->execute();
             if ($DB->is_transaction_started()) {
@@ -471,6 +550,10 @@ class cron {
             if ($CFG->debug !== $debuglevel) {
                 set_debugging($debuglevel);
             }
+
+            // Reset debugdisplay back.
+            $CFG->debugdisplay = $debugdisplay;
+
             // Reset back to the standard admin user.
             self::setup_user();
             self::prepare_core_renderer(true);
@@ -547,7 +630,12 @@ class cron {
 
     /**
      * Sets up a user and course environment in cron.
-     * Do not use outside of cron script!
+     *
+     * Note: This function is intended only for use in:
+     * - the cron runner scripts
+     * - individual tasks which extend the adhoc_task and scheduled_task classes
+     * - unit tests related to tasks
+     * - other parts of the cron/task system
      *
      * Please note that this function stores cache data statically.
      * @see reset_user_cache() to reset this cache.

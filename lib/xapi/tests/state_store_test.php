@@ -37,6 +37,7 @@ class state_store_test extends advanced_testcase {
     public static function setUpBeforeClass(): void {
         global $CFG;
         require_once($CFG->dirroot.'/lib/xapi/tests/helper.php');
+        parent::setUpBeforeClass();
     }
 
     /**
@@ -113,7 +114,7 @@ class state_store_test extends advanced_testcase {
      *
      * @return array
      */
-    public function states_provider() : array {
+    public function states_provider(): array {
         return [
             'Existing and valid state' => [
                 'info' => [],
@@ -193,7 +194,7 @@ class state_store_test extends advanced_testcase {
      *
      * @return array
      */
-    public function put_states_provider() : array {
+    public function put_states_provider(): array {
         return [
             'Update existing state' => [
                 'info' => [],
@@ -334,7 +335,7 @@ class state_store_test extends advanced_testcase {
      *
      * @return array
      */
-    public function reset_wipe_states_provider() : array {
+    public function reset_wipe_states_provider(): array {
         return [
             'With fake_component' => [
                 'info' => [],
@@ -437,5 +438,178 @@ class state_store_test extends advanced_testcase {
         $this->assertEquals($currentstates - 4, $DB->count_records('xapi_states'));
         $this->assertEquals(1, $DB->count_records('xapi_states', ['component' => $component]));
         $this->assertEquals(2, $DB->count_records('xapi_states', ['component' => 'my_component']));
+    }
+
+    /**
+     * Testing get_state_ids method.
+     *
+     * @dataProvider get_state_ids_provider
+     * @param string $component
+     * @param string|null $itemid
+     * @param string|null $registration
+     * @param bool|null $since
+     * @param array $expected the expected result
+     * @return void
+     */
+    public function test_get_state_ids(
+        string $component,
+        ?string $itemid,
+        ?string $registration,
+        ?bool $since,
+        array $expected,
+    ): void {
+        global $DB, $USER;
+
+        $this->resetAfterTest();
+
+        // Scenario.
+        $this->setAdminUser();
+        $other = $this->getDataGenerator()->create_user();
+
+        // Add a few xAPI state records to database.
+        $states = [
+            ['activity' => item_activity::create_from_id('1'), 'stateid' => 'aa'],
+            ['activity' => item_activity::create_from_id('1'), 'registration' => 'reg', 'stateid' => 'bb'],
+            ['activity' => item_activity::create_from_id('1'), 'registration' => 'reg2', 'stateid' => 'cc'],
+            ['activity' => item_activity::create_from_id('2'), 'registration' => 'reg', 'stateid' => 'dd'],
+            ['activity' => item_activity::create_from_id('3'), 'stateid' => 'ee'],
+            ['activity' => item_activity::create_from_id('4'), 'component' => 'other', 'stateid' => 'ff'],
+        ];
+        foreach ($states as $state) {
+            test_helper::create_state($state, true);
+        }
+
+        // Make all existing state entries older except form two.
+        $currenttime = time();
+        $timepast = $currenttime - 5;
+        $DB->set_field('xapi_states', 'timecreated', $timepast);
+        $DB->set_field('xapi_states', 'timemodified', $timepast);
+        $DB->set_field('xapi_states', 'timemodified', $currenttime, ['stateid' => 'aa']);
+        $DB->set_field('xapi_states', 'timemodified', $currenttime, ['stateid' => 'bb']);
+        $DB->set_field('xapi_states', 'timemodified', $currenttime, ['stateid' => 'dd']);
+
+        // Perform test.
+        $sincetime = ($since) ? $currenttime - 1 : null;
+        $store = new state_store($component);
+        $stateids = $store->get_state_ids($itemid, $USER->id, $registration, $sincetime);
+        sort($stateids);
+
+        $this->assertEquals($expected, $stateids);
+    }
+
+    /**
+     * Data provider for the test_get_state_ids.
+     *
+     * @return array
+     */
+    public function get_state_ids_provider(): array {
+        return [
+            'empty_component' => [
+                'component' => 'empty_component',
+                'itemid' => null,
+                'registration' => null,
+                'since' => null,
+                'expected' => [],
+            ],
+            'filter_by_itemid' => [
+                'component' => 'fake_component',
+                'itemid' => '1',
+                'registration' => null,
+                'since' => null,
+                'expected' => ['aa', 'bb', 'cc'],
+            ],
+            'filter_by_registration' => [
+                'component' => 'fake_component',
+                'itemid' => null,
+                'registration' => 'reg',
+                'since' => null,
+                'expected' => ['bb', 'dd'],
+            ],
+            'filter_by_since' => [
+                'component' => 'fake_component',
+                'itemid' => null,
+                'registration' => null,
+                'since' => true,
+                'expected' => ['aa', 'bb', 'dd'],
+            ],
+            'filter_by_itemid_and_registration' => [
+                'component' => 'fake_component',
+                'itemid' => '1',
+                'registration' => 'reg',
+                'since' => null,
+                'expected' => ['bb'],
+            ],
+            'filter_by_itemid_registration_since' => [
+                'component' => 'fake_component',
+                'itemid' => '1',
+                'registration' => 'reg',
+                'since' => true,
+                'expected' => ['bb'],
+            ],
+            'filter_by_registration_since' => [
+                'component' => 'fake_component',
+                'itemid' => null,
+                'registration' => 'reg',
+                'since' => true,
+                'expected' => ['bb', 'dd'],
+            ],
+        ];
+    }
+
+    /**
+     * Test delete with a non numeric activity id.
+     *
+     * The default state store only allows integer itemids.
+     *
+     * @dataProvider invalid_activityid_format_provider
+     * @param string $operation the method to execute
+     * @param bool $usestate if the param is a state or the activity id
+     */
+    public function test_invalid_activityid_format(string $operation, bool $usestate = false): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $state = test_helper::create_state([
+            'activity' => item_activity::create_from_id('notnumeric'),
+        ]);
+        $param = ($usestate) ? $state : 'notnumeric';
+
+        $this->expectException(xapi_exception::class);
+        $store = new state_store('fake_component');
+        $store->$operation($param);
+    }
+
+    /**
+     * Data provider for test_invalid_activityid_format.
+     *
+     * @return array
+     */
+    public function invalid_activityid_format_provider(): array {
+        return [
+            'delete' => [
+                'operation' => 'delete',
+                'usestate' => true,
+            ],
+            'get' => [
+                'operation' => 'get',
+                'usestate' => true,
+            ],
+            'put' => [
+                'operation' => 'put',
+                'usestate' => true,
+            ],
+            'reset' => [
+                'operation' => 'reset',
+                'usestate' => false,
+            ],
+            'wipe' => [
+                'operation' => 'wipe',
+                'usestate' => false,
+            ],
+            'get_state_ids' => [
+                'operation' => 'get_state_ids',
+                'usestate' => false,
+            ],
+        ];
     }
 }

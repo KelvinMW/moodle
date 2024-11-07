@@ -166,7 +166,7 @@
         }
     }
 }}
-<div id="{{uniqid}}-course-format">
+<div id="course-format-{{uniqid}}">
     <h2 class="accesshide">{{{title}}}</h2>
     {{{completionhelp}}}
     <ul class="{{format}}" data-for="course_sectionlist">
@@ -203,9 +203,11 @@
     </div>
     {{/hasnavigation}}
     {{#numsections}}
-        {{$ core_courseformat/local/content/addsection}}
-            {{> core_courseformat/local/content/addsection}}
-        {{/ core_courseformat/local/content/addsection}}
+        {{^singlesection}}
+            {{$ core_courseformat/local/content/addsection}}
+                {{> core_courseformat/local/content/addsection}}
+            {{/ core_courseformat/local/content/addsection}}
+        {{/singlesection}}
     {{/numsections}}
     {{#bulkedittools}}
         {{$ core_courseformat/local/content/bulkedittools}}
@@ -215,6 +217,6 @@
 </div>
 {{#js}}
 require(['core_courseformat/local/content'], function(component) {
-    component.init('{{uniqid}}-course-format', {}, {{sectionreturn}});
+    component.init('page', {}, {{sectionreturn}});
 });
 {{/js}}

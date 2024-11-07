@@ -76,7 +76,11 @@ class moodlenet implements issuer_interface {
         }
 
         $endpointscreated = 0;
-        $configreader = new auth_server_config_reader(new http_client());
+        $config = [];
+        if (defined('BEHAT_SITE_RUNNING')) {
+            $config['verify'] = false;
+        }
+        $configreader = new auth_server_config_reader(new http_client($config));
         try {
             $config = $configreader->read_configuration(new \moodle_url($baseurl));
 
@@ -131,7 +135,7 @@ class moodlenet implements issuer_interface {
                 $request = [
                     'client_name' => $SITE->fullname,
                     'client_uri' => $hosturl,
-                    'logo_uri' => $hosturl . '/pix/f/moodle-256.png',
+                    'logo_uri' => $hosturl . '/pix/moodlelogo.png',
                     'tos_uri' => $hosturl,
                     'policy_uri' => $hosturl,
                     'software_id' => 'moodle',
@@ -150,7 +154,11 @@ class moodlenet implements issuer_interface {
                     'scope' => $scopes
                 ];
 
-                $client = new http_client();
+                $config = [];
+                if (defined('BEHAT_SITE_RUNNING')) {
+                    $config['verify'] = false;
+                }
+                $client = new http_client($config);
                 $request = new Request(
                     'POST',
                     $url,

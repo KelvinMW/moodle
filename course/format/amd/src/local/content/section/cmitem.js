@@ -38,9 +38,9 @@ export default class extends DndCmItem {
         this.selectors = {
             BULKSELECT: `[data-for='cmBulkSelect']`,
             BULKCHECKBOX: `[data-bulkcheckbox]`,
-            CARD: `.activity-item`,
+            CARD: `[data-region='activity-card']`,
             DRAGICON: `.editing_move`,
-            INPLACEEDITABLE: `[data-inplaceeditablelink]`,
+            INPLACEEDITABLE: `[data-itemtype="activityname"] > [data-inplaceeditablelink]`,
         };
         // Most classes will be loaded later by DndCmItem.
         this.classes = {
@@ -60,7 +60,6 @@ export default class extends DndCmItem {
         this.configDragDrop(this.id);
         this.getElement(this.selectors.DRAGICON)?.classList.add(this.classes.DRAGICON);
         this._refreshBulk({state});
-        this.addEventListener(this.element, 'click', this._handleBulkModeClick);
     }
 
     /**
@@ -74,6 +73,17 @@ export default class extends DndCmItem {
             {watch: `cm[${this.id}]:updated`, handler: this._refreshCm},
             {watch: `bulk:updated`, handler: this._refreshBulk},
         ];
+    }
+
+    /**
+     * Return the custom activity card drag shadow image.
+     *
+     * The element returned will be used when the user drags the card.
+     *
+     * @returns {HTMLElement}
+     */
+    setDragImage() {
+        return this.getElement(this.selectors.CARD);
     }
 
     /**
@@ -99,6 +109,14 @@ export default class extends DndCmItem {
         const bulk = state.bulk;
         // For now, dragging elements in bulk is not possible.
         this.setDraggable(!bulk.enabled);
+        // Convert the card into an active element in bulk mode.
+        if (bulk.enabled) {
+            this.element.dataset.action = 'toggleSelectionCm';
+            this.element.dataset.preventDefault = 1;
+        } else {
+            this.element.removeAttribute('data-action');
+            this.element.removeAttribute('data-preventDefault');
+        }
 
         this.getElement(this.selectors.BULKSELECT)?.classList.toggle(this.classes.HIDE, !bulk.enabled);
 
@@ -138,28 +156,6 @@ export default class extends DndCmItem {
         } else {
             checkbox.dataset.isSelectable = 1;
         }
-    }
-
-    /**
-     * Handle the activity card click in bulk mode.
-     * @param {Event} event the click event
-     */
-    _handleBulkModeClick(event) {
-        const selectElement = event.target.closest(this.selectors.BULKSELECT);
-        if (selectElement) {
-            // The select element checkbox execute a normal content action as
-            // any regular action button. This is because the chengechecker module
-            // is sniffing any form element and will with the checked value
-            // changing it twice.
-            return;
-        }
-        const bulk = this.reactive.get('bulk');
-        if (!this._isCmBulkEnabled(bulk)) {
-            return;
-        }
-        event.preventDefault();
-        const mutation = (this._isSelected(bulk)) ? 'cmUnselect' : 'cmSelect';
-        this.reactive.dispatch(mutation, [this.id]);
     }
 
     /**

@@ -28,6 +28,12 @@
         "searchstring": "Search settings",
         "value": "policy",
         "btnclass": "primary",
+        "buttonattributes": [
+            {
+                "key": "name",
+                "value": "hello"
+            }
+        ],
         "query": "themedesigner",
         "hiddenfields": [
             {
@@ -39,7 +45,7 @@
 }}
 <div class="simplesearchform {{ extraclasses }}">
     {{^inform}}
-    <form autocomplete="off" action="{{ action }}" method="get" accept-charset="utf-8" class="mform form-inline simplesearchform">
+    <form autocomplete="off" action="{{ action }}" method="get" accept-charset="utf-8" class="mform d-flex flex-wrap align-items-center simplesearchform">
     {{/inform}}
     {{#hiddenfields}}
         <input type="hidden" name="{{ name }}" value="{{ value }}">
@@ -59,7 +65,10 @@
            value="{{ query }}"
         >
         <div class="input-group-append">
-            <button type="submit" class="btn {{^btnclass}}btn-submit{{/btnclass}} {{ btnclass }} search-icon">
+            <button type="submit"
+                class="btn {{^btnclass}}btn-submit{{/btnclass}} {{ btnclass }} search-icon"
+                {{#buttonattributes}}{{ key }}="{{ value }}" {{/buttonattributes}}
+            >
                 {{#pix}} a/search, core {{/pix}}
                 <span class="sr-only">{{ searchstring }}</span>
             </button>
@@ -67,7 +76,7 @@
 
     </div>
     {{#otherfields}}
-        <div  class="ml-2">{{{ otherfields }}}</div>
+        <div  class="ms-2">{{{ otherfields }}}</div>
     {{/otherfields}}
 {{^inform}}
     </form>

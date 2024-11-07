@@ -38,13 +38,42 @@ require_once($CFG->dirroot . '/mod/survey/lib.php');
  */
 class externallib_test extends externallib_advanced_testcase {
 
+    /** @var \stdClass course record. */
+    protected $course;
+
+    /** @var \stdClass activity record. */
+    protected $survey;
+
+    /** @var \context_module context instance. */
+    protected $context;
+
+    /** @var \StdClass course module. */
+    protected $cm;
+
+    /** @var \StdClass student record. */
+    protected $student;
+
+    /** @var \StdClass teacher record. */
+    protected $teacher;
+
+    /** @var \StdClass student role. */
+    protected $studentrole;
+
+    /** @var \StdClass teacher role. */
+    protected $teacherrole;
+
     /**
      * Set up for every test
      */
     public function setUp(): void {
         global $DB;
+        parent::setUp();
         $this->resetAfterTest();
         $this->setAdminUser();
+
+        // Survey module is disabled by default, enable it for testing.
+        $manager = \core_plugin_manager::resolve_plugininfo_class('mod');
+        $manager::enable_plugin('survey', 1);
 
         // Setup test data.
         $this->course = $this->getDataGenerator()->create_course();
@@ -67,7 +96,7 @@ class externallib_test extends externallib_advanced_testcase {
     /*
      * Test get surveys by courses
      */
-    public function test_mod_survey_get_surveys_by_courses() {
+    public function test_mod_survey_get_surveys_by_courses(): void {
         global $DB;
 
         // Create additional course.
@@ -194,7 +223,7 @@ class externallib_test extends externallib_advanced_testcase {
     /**
      * Test view_survey
      */
-    public function test_view_survey() {
+    public function test_view_survey(): void {
         global $DB;
 
         // Test invalid instance id.
@@ -254,7 +283,7 @@ class externallib_test extends externallib_advanced_testcase {
     /**
      * Test get_questions
      */
-    public function test_get_questions() {
+    public function test_get_questions(): void {
         global $DB;
 
         // Test user with full capabilities.
@@ -308,7 +337,7 @@ class externallib_test extends externallib_advanced_testcase {
     /**
      * Test submit_answers
      */
-    public function test_submit_answers() {
+    public function test_submit_answers(): void {
         global $DB;
 
         // Test user with full capabilities.

@@ -27,6 +27,24 @@ class comment_manager {
     /** @var int The number of comments to display per page */
     private $perpage;
 
+    /** @var stdClass Course data. */
+    protected $course;
+
+    /** @var context|bool To store the context object or false if not found. */
+    protected $context;
+
+    /** @var stdClass Course module. */
+    protected $cm;
+
+    /** @var course_modinfo Module information for course, or null if resetting. */
+    protected $modinfo;
+
+    /** @var string plugin type. */
+    protected $plugintype;
+
+    /** @var string plugin name. */
+    protected $pluginname;
+
     /**
      * Constructs the comment_manage object
      */
@@ -155,7 +173,7 @@ class comment_manager {
         $table = new html_table();
         $table->head = array (
             html_writer::checkbox('selectall', '', false, get_string('selectall'), array('id' => 'comment_select_all',
-                'class' => 'mr-1')),
+                'class' => 'me-1')),
             get_string('author', 'search'),
             get_string('content'),
             get_string('action')
@@ -224,7 +242,7 @@ class comment_manager {
      * @param  stdClass $context   context object
      * @param  string $component   component name
      * @param  int $since          the time to check
-     * @param  stdClass $cm        course module object
+     * @param  stdClass|\cm_info|null $cm course module object
      * @return array list of comments db records since the given timelimit
      * @since Moodle 3.2
      */

@@ -105,6 +105,7 @@ class block extends base {
 
     public function load_settings(part_of_admin_tree $adminroot, $parentnodename, $hassiteconfig) {
         global $CFG, $USER, $DB, $OUTPUT, $PAGE; // In case settings.php wants to refer to them.
+        /** @var \admin_root $ADMIN */
         $ADMIN = $adminroot; // May be used in settings.php.
         $plugininfo = $this; // Also can be used inside settings.php.
         $block = $this;      // Also can be used inside settings.php.
@@ -175,11 +176,9 @@ class block extends base {
 
         if ($block = $DB->get_record('block', array('name'=>$this->name))) {
             // Inform block it's about to be deleted.
-            if (file_exists("$CFG->dirroot/blocks/$block->name/block_$block->name.php")) {
-                $blockobject = block_instance($block->name);
-                if ($blockobject) {
-                    $blockobject->before_delete();  // Only if we can create instance, block might have been already removed.
-                }
+            $blockobject = block_instance($block->name);
+            if ($blockobject) {
+                $blockobject->before_delete();  // Only if we can create instance, block might have been already removed.
             }
 
             // First delete instances and related contexts.

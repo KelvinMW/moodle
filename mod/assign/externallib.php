@@ -357,6 +357,7 @@ class mod_assign_external extends \mod_assign\external\external_api {
                      'm.maxattempts, ' .
                      'm.markingworkflow, ' .
                      'm.markingallocation, ' .
+                     'm.markinganonymous, ' .
                      'm.requiresubmissionstatement, '.
                      'm.preventsubmissionnotingroup, '.
                      'm.intro, '.
@@ -435,6 +436,7 @@ class mod_assign_external extends \mod_assign\external\external_api {
                         'maxattempts' => $module->maxattempts,
                         'markingworkflow' => $module->markingworkflow,
                         'markingallocation' => $module->markingallocation,
+                        'markinganonymous' => $module->markinganonymous,
                         'requiresubmissionstatement' => $module->requiresubmissionstatement,
                         'preventsubmissionnotingroup' => $module->preventsubmissionnotingroup,
                         'timelimit' => $module->timelimit,
@@ -553,6 +555,7 @@ class mod_assign_external extends \mod_assign\external\external_api {
                 'maxattempts' => new external_value(PARAM_INT, 'maximum number of attempts allowed'),
                 'markingworkflow' => new external_value(PARAM_INT, 'enable marking workflow'),
                 'markingallocation' => new external_value(PARAM_INT, 'enable marking allocation'),
+                'markinganonymous' => new external_value(PARAM_INT, 'enable marking anonymous'),
                 'requiresubmissionstatement' => new external_value(PARAM_INT, 'student must accept submission statement'),
                 'preventsubmissionnotingroup' => new external_value(PARAM_INT, 'Prevent submission not in group', VALUE_OPTIONAL),
                 'submissionstatement' => new external_value(PARAM_RAW, 'Submission statement formatted.', VALUE_OPTIONAL),
@@ -2658,6 +2661,7 @@ class mod_assign_external extends \mod_assign\external\external_api {
         global $DB, $CFG;
         require_once($CFG->dirroot . "/mod/assign/locallib.php");
         require_once($CFG->dirroot . "/user/lib.php");
+        require_once($CFG->libdir . '/grouplib.php');
 
         $params = self::validate_parameters(self::list_participants_parameters(),
                                             array(
@@ -2679,8 +2683,10 @@ class mod_assign_external extends \mod_assign\external\external_api {
         $assign->require_view_grades();
 
         $participants = array();
+        $coursegroups = [];
         if (groups_group_visible($params['groupid'], $course, $cm)) {
             $participants = $assign->list_participants_with_filter_status_and_group($params['groupid'], $params['tablesort']);
+            $coursegroups = groups_get_all_groups($course->id);
         }
 
         $userfields = user_get_default_fields();
@@ -2731,9 +2737,12 @@ class mod_assign_external extends \mod_assign\external\external_api {
                 $userdetails['submissionstatus'] = $record->submissionstatus;
                 if (!empty($record->groupid)) {
                     $userdetails['groupid'] = $record->groupid;
-                }
-                if (!empty($record->groupname)) {
-                    $userdetails['groupname'] = $record->groupname;
+
+                    if (!empty($coursegroups[$record->groupid])) {
+                        // Format properly the group name.
+                        $group = $coursegroups[$record->groupid];
+                        $userdetails['groupname'] = \core_external\util::format_string($group->name, $context);
+                    }
                 }
                 // Unique id is required for blind marking.
                 $userdetails['recordid'] = -1;
@@ -2848,6 +2857,7 @@ class mod_assign_external extends \mod_assign\external\external_api {
         global $DB, $CFG;
         require_once($CFG->dirroot . "/mod/assign/locallib.php");
         require_once($CFG->dirroot . "/user/lib.php");
+        require_once($CFG->libdir . '/grouplib.php');
 
         $params = self::validate_parameters(self::get_participant_parameters(), array(
             'assignid' => $assignid,
@@ -2890,9 +2900,11 @@ class mod_assign_external extends \mod_assign\external\external_api {
 
         if (!empty($participant->groupid)) {
             $return['groupid'] = $participant->groupid;
-        }
-        if (!empty($participant->groupname)) {
-            $return['groupname'] = $participant->groupname;
+
+            if ($group = groups_get_group($participant->groupid)) {
+                // Format properly the group name.
+                $return['groupname'] = \core_external\util::format_string($group->name, $context);
+            }
         }
 
         // Skip the expensive lookup of user detail if we're blind marking or the caller

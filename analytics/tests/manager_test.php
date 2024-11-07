@@ -29,13 +29,14 @@ require_once(__DIR__ . '/fixtures/test_target_course_level_shortname.php');
  * @package   core_analytics
  * @copyright 2017 David Monllaó {@link http://www.davidmonllao.com}
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @covers    \core_analytics\manager
  */
 class manager_test extends \advanced_testcase {
 
     /**
      * test_deleted_context
      */
-    public function test_deleted_context() {
+    public function test_deleted_context(): void {
         global $DB;
 
         $this->resetAfterTest(true);
@@ -102,7 +103,7 @@ class manager_test extends \advanced_testcase {
     /**
      * test_deleted_analysable
      */
-    public function test_deleted_analysable() {
+    public function test_deleted_analysable(): void {
         global $DB;
 
         $this->resetAfterTest(true);
@@ -149,7 +150,7 @@ class manager_test extends \advanced_testcase {
     /**
      * Tests for the {@link \core_analytics\manager::load_default_models_for_component()} implementation.
      */
-    public function test_load_default_models_for_component() {
+    public function test_load_default_models_for_component(): void {
         $this->resetAfterTest();
 
         // Attempting to load builtin models should always work without throwing exception.
@@ -171,7 +172,7 @@ class manager_test extends \advanced_testcase {
     /**
      * Tests for the {@link \core_analytics\manager::load_default_models_for_all_components()} implementation.
      */
-    public function test_load_default_models_for_all_components() {
+    public function test_load_default_models_for_all_components(): void {
         $this->resetAfterTest();
 
         $models = \core_analytics\manager::load_default_models_for_all_components();
@@ -185,7 +186,7 @@ class manager_test extends \advanced_testcase {
     /**
      * Tests for the successful execution of the {@link \core_analytics\manager::validate_models_declaration()}.
      */
-    public function test_validate_models_declaration() {
+    public function test_validate_models_declaration(): void {
         $this->resetAfterTest();
 
         // This is expected to run without an exception.
@@ -200,7 +201,7 @@ class manager_test extends \advanced_testcase {
      * @param array $models Models declaration.
      * @param string $exception Expected coding exception message.
      */
-    public function test_validate_models_declaration_exceptions(array $models, string $exception) {
+    public function test_validate_models_declaration_exceptions(array $models, string $exception): void {
         $this->resetAfterTest();
 
         $this->expectException(\coding_exception::class);
@@ -265,7 +266,7 @@ class manager_test extends \advanced_testcase {
     /**
      * Test the implementation of the {@link \core_analytics\manager::create_declared_model()}.
      */
-    public function test_create_declared_model() {
+    public function test_create_declared_model(): void {
         global $DB;
 
         $this->resetAfterTest();
@@ -351,7 +352,7 @@ class manager_test extends \advanced_testcase {
     /**
      * Test the implementation of the {@link \core_analytics\manager::update_default_models_for_component()}.
      */
-    public function test_update_default_models_for_component() {
+    public function test_update_default_models_for_component(): void {
 
         $this->resetAfterTest();
         $this->setAdminuser();
@@ -401,7 +402,7 @@ class manager_test extends \advanced_testcase {
      * test_get_time_splitting_methods description
      * @return null
      */
-    public function test_get_time_splitting_methods() {
+    public function test_get_time_splitting_methods(): void {
         $this->resetAfterTest(true);
 
         $all = \core_analytics\manager::get_all_time_splittings();
@@ -427,7 +428,7 @@ class manager_test extends \advanced_testcase {
     /**
      * Test the implementation of the {@link \core_analytics\manager::model_declaration_identifier()}.
      */
-    public function test_model_declaration_identifier() {
+    public function test_model_declaration_identifier(): void {
 
         $noteaching1 = $this->load_models_from_fixture_file('no_teaching');
         $noteaching2 = $this->load_models_from_fixture_file('no_teaching');
@@ -470,7 +471,7 @@ class manager_test extends \advanced_testcase {
     /**
      * Tests for the {@link \core_analytics\manager::get_declared_target_and_indicators_instances()}.
      */
-    public function test_get_declared_target_and_indicators_instances() {
+    public function test_get_declared_target_and_indicators_instances(): void {
         $this->resetAfterTest();
 
         $definition = $this->load_models_from_fixture_file('no_teaching');
@@ -485,31 +486,69 @@ class manager_test extends \advanced_testcase {
     /**
      * test_get_potential_context_restrictions description
      */
-    public function test_get_potential_context_restrictions() {
+    public function test_get_potential_context_restrictions(): void {
         $this->resetAfterTest();
 
         // No potential context restrictions.
         $this->assertFalse(\core_analytics\manager::get_potential_context_restrictions([]));
 
+        $defaultcategory = \core_course_category::get_default();
+        $defaultcategorycontext = $defaultcategory->get_context();
+
         // Include the all context levels so the misc. category get included.
-        $this->assertCount(1, \core_analytics\manager::get_potential_context_restrictions());
+        $this->assertEquals([
+            $defaultcategorycontext->id => "Category: {$defaultcategory->name}",
+        ], manager::get_potential_context_restrictions());
 
-        $this->getDataGenerator()->create_course();
-        $this->getDataGenerator()->create_category();
-        $this->assertCount(3, \core_analytics\manager::get_potential_context_restrictions());
-        $this->assertCount(3, \core_analytics\manager::get_potential_context_restrictions([CONTEXT_COURSE, CONTEXT_COURSECAT]));
+        $category = $this->getDataGenerator()->create_category(['name' => 'My category']);
+        $categorycontext = $category->get_context();
 
-        $this->assertCount(1, \core_analytics\manager::get_potential_context_restrictions([CONTEXT_COURSE]));
-        $this->assertCount(2, \core_analytics\manager::get_potential_context_restrictions([CONTEXT_COURSECAT]));
+        $courseone = $this->getDataGenerator()->create_course(['fullname' => 'Course one', 'shortname' => 'CS1']);
+        $courseonecontext = \context_course::instance($courseone->id);
 
-        $this->assertCount(1, \core_analytics\manager::get_potential_context_restrictions([CONTEXT_COURSECAT], 'Course category'));
-        $this->assertCount(1, \core_analytics\manager::get_potential_context_restrictions([CONTEXT_COURSECAT], 'Course category 1'));
-        $this->assertCount(
-            2,
-            \core_analytics\manager::get_potential_context_restrictions([CONTEXT_COURSECAT],
-            get_string('defaultcategoryname')
-        ));
-        $this->assertCount(1, \core_analytics\manager::get_potential_context_restrictions([CONTEXT_COURSE], 'Test course 1'));
-        $this->assertCount(1, \core_analytics\manager::get_potential_context_restrictions([CONTEXT_COURSE], 'Test course'));
+        $coursetwo = $this->getDataGenerator()->create_course(['fullname' => 'Course two', 'shortname' => 'CS2']);
+        $coursetwocontext = \context_course::instance($coursetwo->id);
+
+        // All context levels.
+        $this->assertEqualsCanonicalizing([
+            $defaultcategorycontext->id => "Category: {$defaultcategory->name}",
+            $categorycontext->id => "Category: {$category->name}",
+            $courseonecontext->id => "Course: {$courseone->shortname}",
+            $coursetwocontext->id => "Course: {$coursetwo->shortname}",
+        ], manager::get_potential_context_restrictions());
+
+        // All category/course context levels.
+        $this->assertEqualsCanonicalizing([
+            $defaultcategorycontext->id => "Category: {$defaultcategory->name}",
+            $categorycontext->id => "Category: {$category->name}",
+            $courseonecontext->id => "Course: {$courseone->shortname}",
+            $coursetwocontext->id => "Course: {$coursetwo->shortname}",
+        ], manager::get_potential_context_restrictions([CONTEXT_COURSECAT, CONTEXT_COURSE]));
+
+        // All category context levels.
+        $this->assertEqualsCanonicalizing([
+            $defaultcategorycontext->id => "Category: {$defaultcategory->name}",
+            $categorycontext->id => "Category: {$category->name}",
+        ], manager::get_potential_context_restrictions([CONTEXT_COURSECAT]));
+
+        // Filtered category context levels.
+        $this->assertEquals([
+            $categorycontext->id => "Category: {$category->name}",
+        ], manager::get_potential_context_restrictions([CONTEXT_COURSECAT], 'My cat'));
+
+        $this->assertEmpty(manager::get_potential_context_restrictions([CONTEXT_COURSECAT], 'nothing'));
+
+        // All course context levels.
+        $this->assertEqualsCanonicalizing([
+            $courseonecontext->id => "Course: {$courseone->shortname}",
+            $coursetwocontext->id => "Course: {$coursetwo->shortname}",
+        ], manager::get_potential_context_restrictions([CONTEXT_COURSE]));
+
+        // Filtered course context levels.
+        $this->assertEquals([
+            $courseonecontext->id => "Course: {$courseone->shortname}",
+        ], manager::get_potential_context_restrictions([CONTEXT_COURSE], 'one'));
+
+        $this->assertEmpty(manager::get_potential_context_restrictions([CONTEXT_COURSE], 'nothing'));
     }
 }

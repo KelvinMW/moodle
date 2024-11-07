@@ -36,11 +36,36 @@ require_once($CFG->dirroot . '/webservice/tests/helpers.php');
  */
 class externallib_test extends externallib_advanced_testcase {
 
+    /** @var \stdClass Course 1 record. */
+    protected $course1;
+
+    /** @var \stdClass Course 2 record. */
+    protected $course2;
+
+    /** @var \stdClass To store student user record. */
+    protected $student1;
+
+    /** @var \stdClass To store student user record. */
+    protected $student2;
+
+    /** @var \stdClass To store Teacher user record. */
+    protected $teacher;
+
+    /** @var array To store student 1 and the rawgrade 1. */
+    protected $student1grade1 = [];
+
+    /** @var array To store student 1 and the rawgrade 2. */
+    protected $student1grade2 = [];
+
+    /** @var array To store student 2 and the rawgrade. */
+    protected $student2grade = [];
+
     /**
      * Set up for every test
      */
     public function setUp(): void {
         global $DB;
+        parent::setUp();
         $this->resetAfterTest(true);
 
         $s1grade1 = 80;
@@ -83,7 +108,7 @@ class externallib_test extends externallib_advanced_testcase {
     /**
      * Test get_course_grades function case student
      */
-    public function test_get_course_grades_student() {
+    public function test_get_course_grades_student(): void {
 
         // A user can see his own grades in both courses.
         $this->setUser($this->student1);
@@ -127,7 +152,7 @@ class externallib_test extends externallib_advanced_testcase {
     /**
      * Test get_course_grades function case admin
      */
-    public function test_get_course_grades_admin() {
+    public function test_get_course_grades_admin(): void {
 
         // A admin must see all student grades.
         $this->setAdminUser();
@@ -161,7 +186,7 @@ class externallib_test extends externallib_advanced_testcase {
     /**
      * Test get_course_grades function case teacher
      */
-    public function test_get_course_grades_teacher() {
+    public function test_get_course_grades_teacher(): void {
         // Teachers don't see grades.
         $this->setUser($this->teacher);
 
@@ -174,7 +199,7 @@ class externallib_test extends externallib_advanced_testcase {
     /**
      * Test get_course_grades function case incorrect permissions
      */
-    public function test_get_course_grades_permissions() {
+    public function test_get_course_grades_permissions(): void {
         // Student can't see other student grades.
         $this->setUser($this->student2);
 
@@ -185,7 +210,7 @@ class externallib_test extends externallib_advanced_testcase {
     /**
      * Test view_grade_report function
      */
-    public function test_view_grade_report() {
+    public function test_view_grade_report(): void {
         global $USER;
 
         // Redirect events to the sink, so we can recover them later.
@@ -219,7 +244,7 @@ class externallib_test extends externallib_advanced_testcase {
     /**
      * Test view_grade_report_permissions function
      */
-    public function test_view_grade_report_permissions() {
+    public function test_view_grade_report_permissions(): void {
         $this->setUser($this->student2);
 
         $this->expectException('moodle_exception');

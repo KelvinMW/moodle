@@ -24,6 +24,6 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2023021301;        // The current plugin version (Date: YYYYMMDDXX).
-$plugin->requires  = 2022111800;
+$plugin->version   = 2024100700;        // The current plugin version (Date: YYYYMMDDXX).
+$plugin->requires  = 2024100100;
 $plugin->component = 'editor_tiny';     // Full name of the plugin (used for diagnostics).

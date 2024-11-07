@@ -71,13 +71,13 @@ class block_base {
 
     /**
      * An object to contain the information to be displayed in the block.
-     * @var stdObject $content
+     * @var stdClass|null $content
      */
     var $content       = NULL;
 
     /**
      * The initialized instance of this block object.
-     * @var block $instance
+     * @var stdClass $instance
      */
     var $instance      = NULL;
 
@@ -88,14 +88,14 @@ class block_base {
     public $page       = NULL;
 
     /**
-     * This blocks's context.
-     * @var stdClass
+     * This block's context.
+     * @var context
      */
     public $context    = NULL;
 
     /**
      * An object containing the instance configuration information for the current instance of this block.
-     * @var stdObject $config
+     * @var stdClass $config
      */
     var $config        = NULL;
 
@@ -141,7 +141,7 @@ class block_base {
      * This should be implemented by the derived class to return
      * the content object.
      *
-     * @return stdObject
+     * @return stdClass
      */
     function get_content() {
         // This should be implemented by the derived class.
@@ -167,7 +167,7 @@ class block_base {
      * Intentionally doesn't check if content_type is set.
      * This is already done in {@link _self_test()}
      *
-     * @return string $this->content_type
+     * @return int $this->content_type
      */
     function get_content_type() {
         // Intentionally doesn't check if a content_type is set. This is already done in _self_test()
@@ -178,7 +178,7 @@ class block_base {
      * Returns true or false, depending on whether this block has any content to display
      * and whether the user has permission to view the block
      *
-     * @return boolean
+     * @return bool
      */
     function is_empty() {
         if ( !has_capability('moodle/block:view', $this->context) ) {
@@ -194,7 +194,7 @@ class block_base {
      * then calls the block's {@link get_content()} function
      * to set its value back.
      *
-     * @return stdObject
+     * @return stdClass
      */
     function refresh_content() {
         // Nothing special here, depends on content()
@@ -211,7 +211,7 @@ class block_base {
      * {@link html_attributes()}, {@link formatted_contents()} or {@link get_content()},
      * {@link hide_header()}, {@link (get_edit_controls)}, etc.
      *
-     * @return block_contents a representation of the block, for rendering.
+     * @return block_contents|null a representation of the block, for rendering.
      * @since Moodle 2.0.
      */
     public function get_content_for_output($output) {
@@ -462,7 +462,7 @@ class block_base {
      * table and the current page. (See {@link block_manager::load_blocks()}.)
      *
      * @param stdClass $instance data from block_insances, block_positions, etc.
-     * @param moodle_page $the page this block is on.
+     * @param moodle_page $page the page this block is on.
      */
     function _load_instance($instance, $page) {
         if (!empty($instance->configdata)) {
@@ -855,9 +855,6 @@ class block_tree extends block_list {
         $this->get_required_javascript();
         $this->get_content();
         $content = $output->tree_block_contents($this->content->items,array('class'=>'block_tree list'));
-        if (isset($this->id) && !is_numeric($this->id)) {
-            $content = $output->box($content, 'block_tree_box', $this->id);
-        }
         return $content;
     }
 }

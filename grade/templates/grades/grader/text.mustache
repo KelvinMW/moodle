@@ -15,7 +15,7 @@
     along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 }}
 {{!
-    @template gradereport_grader/text
+    @template core_grades/grades/grader/text
 
     Text template for grader report cell.
 
@@ -26,5 +26,7 @@
         "text": "<span class='gradevalue dimmed_text '>Mostly separate knowing</span>"
     }
 }}
+<div class="header">
 {{{gradepassicon}}}
 <span class="{{extraclasses}}">{{{text}}}</span>
+</div>

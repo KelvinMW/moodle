@@ -608,6 +608,7 @@ class core_date {
             'America/Cordoba' => 'America/Argentina/Cordoba',
             'America/Ensenada' => 'America/Tijuana',
             'America/Fort_Wayne' => 'America/Indiana/Indianapolis',
+            'America/Godthab' => 'America/Nuuk',
             'America/Indianapolis' => 'America/Indiana/Indianapolis',
             'America/Jujuy' => 'America/Argentina/Jujuy',
             'America/Knox_IN' => 'America/Indiana/Knox',
@@ -641,8 +642,10 @@ class core_date {
             'Australia/Canberra' => 'Australia/Sydney',
             'Australia/Yancowinna' => 'Australia/Broken_Hill',
             'Europe/Belfast' => 'Europe/London',
+            'Europe/Kiev' => 'Europe/Kyiv',
             'Europe/Nicosia' => 'Asia/Nicosia',
             'Europe/Tiraspol' => 'Europe/Chisinau',
+            'Pacific/Enderbury' => 'Pacific/Kanton',
             'Pacific/Johnston' => 'Pacific/Honolulu',
             'Pacific/Ponape' => 'Pacific/Pohnpei',
             'Pacific/Samoa' => 'Pacific/Pago_Pago',
@@ -707,17 +710,17 @@ class core_date {
      * @return string
      * @author BohwaZ <https://bohwaz.net/>
      */
-    public static function strftime(string $format, $timestamp = null, ?string $locale = null) : string {
+    public static function strftime(string $format, $timestamp = null, ?string $locale = null): string {
         // Moodle-specific modification. For the IntlDateFormatter we need to use unix-style locale
         // from the string 'locale' even for Windows, so we can neither use moodle_getlocale().
         // nor rely on the setlocale() use below. We also ignore $CFG->locale because it can use
         // Windows format.
         $locale = $locale ?: get_string('locale', 'langconfig');
 
-        // The following code is taken from https://github.com/alphp/strftime without modifications.
+        // The following code is taken from https://github.com/alphp/strftime.
         // phpcs:disable
         if (!($timestamp instanceof DateTimeInterface)) {
-          $timestamp = is_int($timestamp) ? '@' . $timestamp : (string) $timestamp;
+          $timestamp = is_numeric($timestamp) ? '@' . $timestamp : (string) $timestamp;
 
           try {
             $timestamp = new DateTime($timestamp);
@@ -744,7 +747,23 @@ class core_date {
         ];
 
         $intl_formatter = function (DateTimeInterface $timestamp, string $format) use ($intl_formats, $locale) {
+
+          // Map IANA timezone DB names (used by PHP) to those used internally by the "intl" extension. The extension uses its
+          // own data based on ICU timezones, which may not necessarily be in-sync with IANA depending on the version installed
+          // on the local system. See: https://unicode-org.github.io/icu/userguide/datetime/timezone/#updating-the-time-zone-data
           $tz = $timestamp->getTimezone();
+          $intltz = IntlTimeZone::fromDateTimeZone($tz);
+          if ($intltz === null) {
+              // Where intl doesn't know about a recent timezone, map it to an equivalent existing zone.
+              $intltzname = strtr($tz->getName(), [
+                  'America/Ciudad_Juarez' => 'America/Denver',
+                  'America/Nuuk' => 'America/Godthab',
+                  'Europe/Kyiv' => 'Europe/Kiev',
+                  'Pacific/Kanton' => 'Pacific/Enderbury',
+              ]);
+              $intltz = IntlTimeZone::createTimeZone($intltzname);
+          }
+
           $date_type = IntlDateFormatter::FULL;
           $time_type = IntlDateFormatter::FULL;
           $pattern = '';
@@ -782,10 +801,10 @@ class core_date {
           // This leads to the same instants in time, as expressed in Unix time, having different representations
           //  in formatted strings.
           // To adjust for this, a custom calendar can be supplied with a cutover date arbitrarily far in the past.
-          $calendar = IntlGregorianCalendar::createInstance();
+          $calendar = IntlGregorianCalendar::createInstance($intltz);
           $calendar->setGregorianChange(PHP_INT_MIN);
 
-          return (new IntlDateFormatter($locale, $date_type, $time_type, $tz, $calendar, $pattern))->format($timestamp);
+          return (new IntlDateFormatter($locale, $date_type, $time_type, $intltz, $calendar, $pattern))->format($timestamp);
         };
 
         // Same order as https://www.php.net/manual/en/function.strftime.php

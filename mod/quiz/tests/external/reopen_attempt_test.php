@@ -16,6 +16,10 @@
 
 namespace mod_quiz\external;
 
+defined('MOODLE_INTERNAL') || die();
+
+require_once(__DIR__ . '/../../../../webservice/tests/helpers.php');
+
 use coding_exception;
 use core_question_generator;
 use externallib_advanced_testcase;
@@ -38,7 +42,7 @@ class reopen_attempt_test extends externallib_advanced_testcase {
     /** @var stdClass|null if we make a quiz attempt, we store the student object here. */
     protected $student;
 
-    public function test_reopen_attempt_service_works() {
+    public function test_reopen_attempt_service_works(): void {
         [$attemptid] = $this->create_attempt_at_quiz_with_one_shortanswer_question();
 
         reopen_attempt::execute($attemptid);
@@ -47,7 +51,7 @@ class reopen_attempt_test extends externallib_advanced_testcase {
         $this->assertEquals(quiz_attempt::IN_PROGRESS, $attemptobj->get_state());
     }
 
-    public function test_reopen_attempt_service_checks_permissions() {
+    public function test_reopen_attempt_service_checks_permissions(): void {
         [$attemptid] = $this->create_attempt_at_quiz_with_one_shortanswer_question();
 
         $unprivilegeduser = $this->getDataGenerator()->create_user();
@@ -57,26 +61,26 @@ class reopen_attempt_test extends externallib_advanced_testcase {
         reopen_attempt::execute($attemptid);
     }
 
-    public function test_reopen_attempt_service_checks_attempt_state() {
+    public function test_reopen_attempt_service_checks_attempt_state(): void {
         [$attemptid] = $this->create_attempt_at_quiz_with_one_shortanswer_question(quiz_attempt::IN_PROGRESS);
 
-        $this->expectExceptionMessage("Attempt $attemptid is in the wrong state (In progress) to be re-openend.");
+        $this->expectExceptionMessage("Attempt $attemptid is in the wrong state (In progress) to be reopened.");
         reopen_attempt::execute($attemptid);
     }
 
-    public function test_get_reopen_attempt_confirmation_staying_open() {
+    public function test_get_reopen_attempt_confirmation_staying_open(): void {
         global $DB;
         [$attemptid, $quizid] = $this->create_attempt_at_quiz_with_one_shortanswer_question();
         $DB->set_field('quiz', 'timeclose', 0, ['id' => $quizid]);
 
         $message = get_reopen_attempt_confirmation::execute($attemptid);
 
-        $this->assertEquals('<p>Are you sure you wish to re-open quiz attempt 1 by ' . fullname($this->student) .
-                '?</p><p>The re-opened attempt will remain open so that it can be continued.</p>',
+        $this->assertEquals('<p>This will reopen attempt 1 by ' . fullname($this->student) .
+                '.</p><p>The attempt will remain open and can be continued.</p>',
                 $message);
     }
 
-    public function test_get_reopen_attempt_confirmation_staying_open_until() {
+    public function test_get_reopen_attempt_confirmation_staying_open_until(): void {
         global $DB;
         [$attemptid, $quizid] = $this->create_attempt_at_quiz_with_one_shortanswer_question();
         $timeclose = time() + HOURSECS;
@@ -84,13 +88,13 @@ class reopen_attempt_test extends externallib_advanced_testcase {
 
         $message = get_reopen_attempt_confirmation::execute($attemptid);
 
-        $this->assertEquals('<p>Are you sure you wish to re-open quiz attempt 1 by ' . fullname($this->student) .
-                '?</p><p>The re-opened attempt will remain open so that it can be continued. It will be due for submission by ' .
+        $this->assertEquals('<p>This will reopen attempt 1 by ' . fullname($this->student) .
+                '.</p><p>The attempt will remain open and can be continued until the quiz closes on ' .
                 userdate($timeclose) . '.</p>',
                 $message);
     }
 
-    public function test_get_reopen_attempt_confirmation_submitting() {
+    public function test_get_reopen_attempt_confirmation_submitting(): void {
         global $DB;
         [$attemptid, $quizid] = $this->create_attempt_at_quiz_with_one_shortanswer_question();
         $timeclose = time() - HOURSECS;
@@ -98,12 +102,12 @@ class reopen_attempt_test extends externallib_advanced_testcase {
 
         $message = get_reopen_attempt_confirmation::execute($attemptid);
 
-        $this->assertEquals('<p>Are you sure you wish to re-open quiz attempt 1 by ' . fullname($this->student) .
-                '?</p><p>The re-opened attempt will be immediately submitted for grading.</p>',
+        $this->assertEquals('<p>This will reopen attempt 1 by ' . fullname($this->student) .
+                '.</p><p>The attempt will be immediately submitted for grading.</p>',
                 $message);
     }
 
-    public function test_get_reopen_attempt_confirmation_service_checks_permissions() {
+    public function test_get_reopen_attempt_confirmation_service_checks_permissions(): void {
         [$attemptid] = $this->create_attempt_at_quiz_with_one_shortanswer_question();
 
         $unprivilegeduser = $this->getDataGenerator()->create_user();
@@ -113,10 +117,10 @@ class reopen_attempt_test extends externallib_advanced_testcase {
         get_reopen_attempt_confirmation::execute($attemptid);
     }
 
-    public function test_get_reopen_attempt_confirmation_service_checks_attempt_state() {
+    public function test_get_reopen_attempt_confirmation_service_checks_attempt_state(): void {
         [$attemptid] = $this->create_attempt_at_quiz_with_one_shortanswer_question(quiz_attempt::IN_PROGRESS);
 
-        $this->expectExceptionMessage("Attempt $attemptid is in the wrong state (In progress) to be re-openend.");
+        $this->expectExceptionMessage("Attempt $attemptid is in the wrong state (In progress) to be reopened.");
         get_reopen_attempt_confirmation::execute($attemptid);
     }
 
@@ -166,7 +170,7 @@ class reopen_attempt_test extends externallib_advanced_testcase {
             // Attempt goes overdue (e.g. if cron ran).
             $attemptobj->process_abandon($timeclose + 2 * get_config('quiz', 'graceperiodmin'), false);
         } else if ($attemptstate !== quiz_attempt::IN_PROGRESS) {
-            throw new coding_exception('State ' . $attemptstate . ' not currently supported.');
+            throw new coding_exception('Status ' . $attemptstate . ' not currently supported.');
         }
 
         // Set current user to admin before we return.

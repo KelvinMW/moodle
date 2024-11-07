@@ -65,13 +65,6 @@ class data_portfolio_caller extends portfolio_module_caller_base {
      */
     public function __construct($callbackargs) {
         parent::__construct($callbackargs);
-        // set up the list of fields to export
-        $this->selectedfields = array();
-        foreach ($callbackargs as $key => $value) {
-            if (strpos($key, 'field_') === 0) {
-                $this->selectedfields[] = substr($key, 6);
-            }
-        }
     }
 
     /**
@@ -983,6 +976,7 @@ function data_get_tag_title_field($dataid) {
         if ($field->addtemplateposition === false) {
             continue;
         }
+        $field->type = clean_param($field->type, PARAM_ALPHA);
         $filepath = $CFG->dirroot . '/mod/data/field/' . $field->type . '/field.class.php';
         if (!file_exists($filepath)) {
             continue;
@@ -1026,6 +1020,7 @@ function data_get_tag_title_for_entry($field, $entry) {
     if (!isset($field->type)) {
         return null;
     }
+    $field->type = clean_param($field->type, PARAM_ALPHA);
     $filepath = $CFG->dirroot . '/mod/data/field/' . $field->type . '/field.class.php';
     if (!file_exists($filepath)) {
         return null;

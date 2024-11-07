@@ -32,11 +32,39 @@ require_once($CFG->dirroot . '/mod/assign/tests/generator.php');
 class observer_test extends \advanced_testcase {
     use \mod_assign_test_generator;
 
+    /** @var string Table name. */
+    protected $table;
+
+    /** @var \stdClass course data. */
+    protected $course;
+
+    /** @var \stdClass student data. */
+    protected $student;
+
+    /** @var \stdClass teacher data. */
+    protected $teacher;
+
+    /** @var \stdClass student role. */
+    protected $studentrole;
+
+    /** @var \stdClass teacher role. */
+    protected $teacherrole;
+
+    /** @var \stdClass course forum. */
+    protected $forum;
+
+    /** @var \stdClass course glossary. */
+    protected $glossary;
+
+    /** @var \stdClass course chat. */
+    protected $chat;
+
     /**
      * Set up for every test
      */
     public function setUp(): void {
         global $DB;
+        parent::setUp();
 
         $this->resetAfterTest();
         $this->setAdminUser();
@@ -68,7 +96,7 @@ class observer_test extends \advanced_testcase {
      *
      * When items events are triggered they are stored in the block_recentlyaccesseditems table.
      */
-    public function test_item_view_recorded_testcase() {
+    public function test_item_view_recorded_testcase(): void {
         global $DB;
 
         // Empty table at the beggining.
@@ -113,7 +141,7 @@ class observer_test extends \advanced_testcase {
      *
      * When a course module is removed, the records associated in the block_recentlyaccesseditems table are deleted.
      */
-    public function test_item_delete_record_testcase() {
+    public function test_item_delete_record_testcase(): void {
         global $DB;
 
         // Empty table at the beggining.

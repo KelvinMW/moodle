@@ -51,13 +51,14 @@ class context_locked_test extends \advanced_testcase {
     /**
      * Tests that events are created when contexts are locked and unlocked.
      */
-    public function test_creation() {
+    public function test_creation(): void {
         $this->resetAfterTest();
 
         $category = self::getDataGenerator()->create_category();
         $catcontext = \context_coursecat::instance($category->id);
         $course = self::getDataGenerator()->create_course(['category' => $category->id]);
         $coursecontext = \context_course::instance($course->id);
+        /** @var \mod_forum_generator $activitygenerator */
         $activitygenerator = self::getDataGenerator()->get_plugin_generator('mod_forum');
         $activity = $activitygenerator->create_instance(['course' => $course->id]);
         $activitycontext = \context_module::instance($activity->cmid);

@@ -34,20 +34,23 @@ require_once($CFG->dirroot . '/question/type/multianswer/edit_multianswer_form.p
 /**
  * Unit tests for the multianswer question definition class.
  *
- * @package    qtype_multianswer
- * @copyright  2011 The Open University
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package   qtype_multianswer
+ * @copyright 2011 The Open University
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @covers    \qtype_multianswer
  */
 class question_type_test extends \advanced_testcase {
     /** @var qtype_multianswer instance of the question type class to test. */
     protected $qtype;
 
     protected function setUp(): void {
+        parent::setUp();
         $this->qtype = new qtype_multianswer();
     }
 
     protected function tearDown(): void {
         $this->qtype = null;
+        parent::tearDown();
     }
 
     protected function get_test_question_data() {
@@ -103,24 +106,55 @@ class question_type_test extends \advanced_testcase {
         return $q;
     }
 
-    public function test_name() {
+    public function test_name(): void {
         $this->assertEquals($this->qtype->name(), 'multianswer');
     }
 
-    public function test_can_analyse_responses() {
+    public function test_can_analyse_responses(): void {
         $this->assertFalse($this->qtype->can_analyse_responses());
     }
 
-    public function test_get_random_guess_score() {
-        $q = \test_question_maker::get_question_data('multianswer', 'twosubq');
+    public function test_get_random_guess_score(): void {
+        $q = test_question_maker::get_question_data('multianswer', 'twosubq');
         $this->assertEqualsWithDelta(0.1666667, $this->qtype->get_random_guess_score($q), 0.0000001);
     }
 
-    public function test_load_question() {
+    public function test_get_random_guess_score_with_missing_subquestion(): void {
+        global $DB;
+        $this->resetAfterTest();
+
+        // Create a question referring to a subquesion that has got lost (which happens some time).
+        /** @var \core_question_generator $generator */
+        $generator = $this->getDataGenerator()->get_plugin_generator('core_question');
+        $category = $generator->create_question_category();
+        $question = $generator->create_question('multianswer', 'twosubq', ['category' => $category->id]);
+        // Add a non-existent subquestion id to the list.
+        $sequence = $DB->get_field('question_multianswer', 'sequence', ['question' => $question->id], MUST_EXIST);
+        $DB->set_field('question_multianswer', 'sequence', $sequence . ',-1', ['question' => $question->id]);
+
+        // Verify that computing the random guess score does not give an error.
+        $questiondata = question_bank::load_question_data($question->id);
+        $this->assertEqualsWithDelta(0.1666667, $this->qtype->get_random_guess_score($questiondata), 0.0000001);
+    }
+
+    public function test_get_random_guess_score_with_all_missing_subquestions(): void {
+        $this->resetAfterTest();
+
+        // Create a question where all subquestions are missing.
+        $questiondata = test_question_maker::get_question_data('multianswer', 'twosubq');
+        foreach ($questiondata->options->questions as $subq) {
+            $subq->qtype = 'subquestion_replacement';
+        }
+
+        // Verify that computing the random guess score does not give an error.
+        $this->assertNull($this->qtype->get_random_guess_score($questiondata));
+    }
+
+    public function test_load_question(): void {
         $this->resetAfterTest();
 
         $syscontext = \context_system::instance();
-        /** @var core_question_generator $generator */
+        /** @var \core_question_generator $generator */
         $generator = $this->getDataGenerator()->get_plugin_generator('core_question');
         $category = $generator->create_question_category(['contextid' => $syscontext->id]);
 
@@ -234,7 +268,7 @@ class question_type_test extends \advanced_testcase {
         $this->assertEquals($expectedquestions, array_values($gotquestions));
     }
 
-    public function test_question_saving_twosubq() {
+    public function test_question_saving_twosubq(): void {
         $this->resetAfterTest(true);
         $this->setAdminUser();
 
@@ -281,7 +315,7 @@ class question_type_test extends \advanced_testcase {
             }
         }
 
-        $this->assertObjectHasAttribute('questions', $actualquestiondata->options);
+        $this->assertObjectHasProperty('questions', $actualquestiondata->options);
 
         $subqpropstoignore =
             ['id', 'category', 'parent', 'contextid', 'question', 'options', 'stamp', 'timemodified',
@@ -314,7 +348,7 @@ class question_type_test extends \advanced_testcase {
      *  Verify that the multiplechoice variants parameters are correctly interpreted from
      *  the question text
      */
-    public function test_questiontext_extraction_of_multiplechoice_subquestions_variants() {
+    public function test_questiontext_extraction_of_multiplechoice_subquestions_variants(): void {
         $questiontext = array();
         $questiontext['format'] = FORMAT_HTML;
         $questiontext['itemid'] = '';
@@ -367,7 +401,7 @@ class question_type_test extends \advanced_testcase {
      *
      * @covers \qtype_multianswer::get_question_options
      */
-    public function test_get_question_options() {
+    public function test_get_question_options(): void {
         global $DB;
 
         $this->resetAfterTest(true);

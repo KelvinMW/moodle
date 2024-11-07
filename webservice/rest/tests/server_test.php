@@ -201,13 +201,12 @@ class server_test extends \advanced_testcase {
 
     /**
      * @dataProvider xmlize_provider
-     * @param external_description $description The data structure.
+     * @param \core_external\external_description $description The data structure.
      * @param mixed $value The value to xmlise.
      * @param mixed $expected The expected output.
      */
-    public function test_xmlize($description, $value, $expected) {
+    public function test_xmlize($description, $value, $expected): void {
         $method = new \ReflectionMethod('webservice_rest_server', 'xmlize_result');
-        $method->setAccessible(true);
         $this->assertEquals($expected, $method->invoke(null, $value, $description));
     }
 

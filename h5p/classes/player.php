@@ -154,15 +154,22 @@ class player {
      * Get the encoded URL for embeding this H5P content.
      *
      * @param string $url Local URL of the H5P file to display.
-     * @param stdClass $config Configuration for H5P buttons.
+     * @param \stdClass $config Configuration for H5P buttons.
      * @param bool $preventredirect Set to true in scripts that can not redirect (CLI, RSS feeds, etc.), throws exceptions
      * @param string $component optional moodle component to sent xAPI tracking
      * @param bool $displayedit Whether the edit button should be displayed below the H5P content.
+     * @param \action_link[] $extraactions Extra actions to display above the H5P content.
      *
      * @return string The embedable code to display a H5P file.
      */
-    public static function display(string $url, \stdClass $config, bool $preventredirect = true,
-            string $component = '', bool $displayedit = false): string {
+    public static function display(
+        string $url,
+        \stdClass $config,
+        bool $preventredirect = true,
+        string $component = '',
+        bool $displayedit = false,
+        array $extraactions = [],
+    ): string {
         global $OUTPUT, $CFG;
 
         $params = [
@@ -187,11 +194,15 @@ class player {
             if ($originalfile) {
                 // Check if the user can edit this content.
                 if (api::can_edit_content($originalfile)) {
-                    $template->editurl = $CFG->wwwroot . '/h5p/edit.php?url=' . $url;
+                    $template->editurl = (new \moodle_url('/h5p/edit.php', ['url' => $url]))->out(false);
                 }
             }
         }
 
+        $template->extraactions = [];
+        foreach ($extraactions as $action) {
+            $template->extraactions[] = $action->export_for_template($OUTPUT);
+        }
         $result = $OUTPUT->render_from_template('core_h5p/h5pembed', $template);
         $result .= self::get_resize_code();
         return $result;
@@ -277,6 +288,30 @@ class player {
         );
         try {
             $state = $xapihandler->load_state($state);
+            if (!$state) {
+                // Check if the state has been restored from a backup for the current user.
+                $state = new state(
+                    item_agent::create_from_user($USER),
+                    $xapiobject,
+                    'restored',
+                    null,
+                    null
+                );
+                $state = $xapihandler->load_state($state);
+                if ($state && !is_null($state->get_state_data())) {
+                    // A restored state has been found. It will be replaced with one with the proper stateid and statedata.
+                    $xapihandler->delete_state($state);
+                    $state = new state(
+                        item_agent::create_from_user($USER),
+                        $xapiobject,
+                        'state',
+                        $state->jsonSerialize(),
+                        null
+                    );
+                    $xapihandler->save_state($state);
+                }
+            }
+
             if (!$state) {
                 return $emptystatedata;
             }

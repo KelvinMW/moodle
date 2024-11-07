@@ -82,6 +82,52 @@ class external_api_test extends \advanced_testcase {
         $this->assertSame('someid', key($result));
         $this->assertSame(6, $result['someid']);
         $this->assertSame('aaa', $result['text']);
+
+        // Missing required value (an exception is thrown).
+        $testdata = [];
+        try {
+            external_api::clean_returnvalue($description, $testdata);
+            $this->fail('Exception expected');
+        } catch (\moodle_exception $ex) {
+            $this->assertInstanceOf(\invalid_response_exception::class, $ex);
+            $this->assertSame('Invalid response value detected (Error in response - '
+                . 'Missing following required key in a single structure: text)', $ex->getMessage());
+        }
+
+        // Test nullable external_value may optionally return data.
+        $description = new external_function_parameters([
+            'value' => new external_value(PARAM_INT, '', VALUE_REQUIRED, null, NULL_ALLOWED)
+        ]);
+        $testdata = ['value' => null];
+        $cleanedvalue = external_api::clean_returnvalue($description, $testdata);
+        $this->assertSame($testdata, $cleanedvalue);
+        $testdata = ['value' => 1];
+        $cleanedvalue = external_api::clean_returnvalue($description, $testdata);
+        $this->assertSame($testdata, $cleanedvalue);
+
+        // Test nullable external_single_structure may optionally return data.
+        $description = new external_function_parameters([
+            'value' => new external_single_structure(['value2' => new external_value(PARAM_INT)],
+                '', VALUE_REQUIRED, null, NULL_ALLOWED)
+        ]);
+        $testdata = ['value' => null];
+        $cleanedvalue = external_api::clean_returnvalue($description, $testdata);
+        $this->assertSame($testdata, $cleanedvalue);
+        $testdata = ['value' => ['value2' => 1]];
+        $cleanedvalue = external_api::clean_returnvalue($description, $testdata);
+        $this->assertSame($testdata, $cleanedvalue);
+
+        // Test nullable external_multiple_structure may optionally return data.
+        $description = new external_function_parameters([
+            'value' => new external_multiple_structure(
+                new external_value(PARAM_INT), '', VALUE_REQUIRED, null, NULL_ALLOWED)
+        ]);
+        $testdata = ['value' => null];
+        $cleanedvalue = external_api::clean_returnvalue($description, $testdata);
+        $this->assertSame($testdata, $cleanedvalue);
+        $testdata = ['value' => [1]];
+        $cleanedvalue = external_api::clean_returnvalue($description, $testdata);
+        $this->assertSame($testdata, $cleanedvalue);
     }
 
     /**
@@ -162,8 +208,56 @@ class external_api_test extends \advanced_testcase {
         $singlestructure['object'] = $object;
         $singlestructure['value2'] = 'Some text';
         $testdata = [$singlestructure];
-        $this->expectException('invalid_response_exception');
+        try {
+            external_api::clean_returnvalue($returndesc, $testdata);
+            $this->fail('Exception expected');
+        } catch (\moodle_exception $ex) {
+            $this->assertInstanceOf(\invalid_response_exception::class, $ex);
+            $this->assertSame('Invalid response value detected (object => Invalid response value detected '
+                . '(Error in response - Missing following required key in a single structure: value1): Error in response - '
+                . 'Missing following required key in a single structure: value1)', $ex->getMessage());
+        }
+
+        // Fail if no data provided when value required.
+        $testdata = null;
+        try {
+            external_api::clean_returnvalue($returndesc, $testdata);
+            $this->fail('Exception expected');
+        } catch (\moodle_exception $ex) {
+            $this->assertInstanceOf(\invalid_response_exception::class, $ex);
+            $this->assertSame('Invalid response value detected (Only arrays accepted. The bad value is: \'\')',
+                $ex->getMessage());
+        }
+
+        // Test nullable external_multiple_structure may optionally return data.
+        $returndesc = new external_multiple_structure(
+            new external_value(PARAM_INT),
+            '', VALUE_REQUIRED, null, NULL_ALLOWED);
+        $testdata = null;
         $cleanedvalue = external_api::clean_returnvalue($returndesc, $testdata);
+        $this->assertSame($testdata, $cleanedvalue);
+        $testdata = [1];
+        $cleanedvalue = external_api::clean_returnvalue($returndesc, $testdata);
+        $this->assertSame($testdata, $cleanedvalue);
+
+        // Test nullable external_single_structure may optionally return data.
+        $returndesc = new external_single_structure(['value' => new external_value(PARAM_INT)],
+            '', VALUE_REQUIRED, null, NULL_ALLOWED);
+        $testdata = null;
+        $cleanedvalue = external_api::clean_returnvalue($returndesc, $testdata);
+        $this->assertSame($testdata, $cleanedvalue);
+        $testdata = ['value' => 1];
+        $cleanedvalue = external_api::clean_returnvalue($returndesc, $testdata);
+        $this->assertSame($testdata, $cleanedvalue);
+
+        // Test nullable external_value may optionally return data.
+        $returndesc = new external_value(PARAM_INT, '', VALUE_REQUIRED, null, NULL_ALLOWED);
+        $testdata = null;
+        $cleanedvalue = external_api::clean_returnvalue($returndesc, $testdata);
+        $this->assertSame($testdata, $cleanedvalue);
+        $testdata = 1;
+        $cleanedvalue = external_api::clean_returnvalue($returndesc, $testdata);
+        $this->assertSame($testdata, $cleanedvalue);
     }
 
     /**
@@ -182,6 +276,11 @@ class external_api_test extends \advanced_testcase {
 
         // Use context level and instance id.
         $fetchedcontext = $this->get_context_from_params(["contextlevel" => "course", "instanceid" => $course->id]);
+        $this->assertEquals($realcontext, $fetchedcontext);
+
+        // Use context level numbers instead of legacy short level names.
+        $fetchedcontext = $this->get_context_from_params(
+            ["contextlevel" => \core\context\course::LEVEL, "instanceid" => $course->id]);
         $this->assertEquals($realcontext, $fetchedcontext);
 
         // Passing empty values.
@@ -211,15 +310,29 @@ class external_api_test extends \advanced_testcase {
         $fetchedcontext = $this->get_context_from_params(["contextlevel" => "system", "instanceid" => 0]);
         $this->assertEquals($realcontext, $fetchedcontext);
 
-        // Passing wrong level.
-        $this->expectException('invalid_parameter_exception');
-        $fetchedcontext = $this->get_context_from_params(["contextlevel" => "random", "instanceid" => $course->id]);
+        // Passing wrong level name.
+        try {
+            $fetchedcontext = $this->get_context_from_params(["contextlevel" => "random", "instanceid" => $course->id]);
+            $this->fail('exception expected when level name is invalid');
+        } catch (\moodle_exception $e) {
+            $this->assertInstanceOf('invalid_parameter_exception', $e);
+            $this->assertSame('Invalid parameter value detected (Invalid context level = random)', $e->getMessage());
+        }
+
+        // Passing wrong level number.
+        try {
+            $fetchedcontext = $this->get_context_from_params(["contextlevel" => -10, "instanceid" => $course->id]);
+            $this->fail('exception expected when level name is invalid');
+        } catch (\moodle_exception $e) {
+            $this->assertInstanceOf('invalid_parameter_exception', $e);
+            $this->assertSame('Invalid parameter value detected (Invalid context level = -10)', $e->getMessage());
+        }
     }
 
     /**
      * Test \core_external\external_api::get_context()_from_params parameter validation.
      *
-     * @covers \core_external\external_api::get_context
+     * @covers \core_external\external_api::get_context_from_params
      */
     public function test_get_context_params(): void {
         global $USER;
@@ -232,7 +345,7 @@ class external_api_test extends \advanced_testcase {
     /**
      * Test \core_external\external_api::get_context()_from_params parameter validation.
      *
-     * @covers \core_external\external_api::get_context
+     * @covers \core_external\external_api::get_context_from_params
      */
     public function test_get_context_params2(): void {
         global $USER;
@@ -244,7 +357,7 @@ class external_api_test extends \advanced_testcase {
 
     /**
      * Test \core_external\external_api::get_context()_from_params parameter validation.
-     * @covers \core_external\external_api::get_context
+     * @covers \core_external\external_api::get_context_from_params
      */
     public function test_get_context_params3(): void {
         global $USER;
@@ -278,6 +391,7 @@ class external_api_test extends \advanced_testcase {
     /**
      * Test \core_external\external_api::external_function_info.
      *
+     * @runInSeparateProcess
      * @dataProvider all_external_info_provider
      * @covers \core_external\external_api::external_function_info
      * @param \stdClass $definition
@@ -355,7 +469,6 @@ class external_api_test extends \advanced_testcase {
     protected function get_context_from_params() {
         $rc = new \ReflectionClass(external_api::class);
         $method = $rc->getMethod('get_context_from_params');
-        $method->setAccessible(true);
         return $method->invokeArgs(null, func_get_args());
     }
 }

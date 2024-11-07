@@ -87,6 +87,7 @@ class auth extends base {
             $new = implode(',', array_flip($plugins));
             add_to_config_log('auth', $CFG->auth, $new, 'core');
             set_config('auth', $new);
+            \core\session\manager::destroy_by_auth_plugin($pluginname);
             // Remove stale sessions.
             \core\session\manager::gc();
             // Reset caches.
@@ -102,6 +103,7 @@ class auth extends base {
 
     public function load_settings(part_of_admin_tree $adminroot, $parentnodename, $hassiteconfig) {
         global $CFG, $USER, $DB, $OUTPUT, $PAGE; // In case settings.php wants to refer to them.
+        /** @var \admin_root $ADMIN */
         $ADMIN = $adminroot; // May be used in settings.php.
         $plugininfo = $this; // Also can be used inside settings.php.
         $auth = $this;       // Also to be used inside settings.php.
@@ -159,6 +161,7 @@ class auth extends base {
             $value = implode(',', $auths);
             add_to_config_log('auth', $CFG->auth, $value, 'core');
             set_config('auth', $value);
+            \core\session\manager::destroy_by_auth_plugin($this->name);
         }
 
         if (!empty($CFG->registerauth) and $CFG->registerauth === $this->name) {

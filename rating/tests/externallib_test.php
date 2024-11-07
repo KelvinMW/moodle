@@ -46,11 +46,51 @@ require_once($CFG->dirroot . '/rating/lib.php');
  */
 class externallib_test extends externallib_advanced_testcase {
 
+    /** @var \stdClass course record. */
+    protected $course;
+
+    /** @var \stdClass user record. */
+    protected $student1;
+
+    /** @var \stdClass user record. */
+    protected $teacher1;
+
+    /** @var \stdClass user record. */
+    protected $student2;
+
+    /** @var \stdClass user record. */
+    protected $teacher2;
+
+    /** @var \stdClass user record. */
+    protected $student3;
+
+    /** @var \stdClass user record. */
+    protected $teacher3;
+
+    /** @var \stdClass activity record. */
+    protected $forum;
+
+    /** @var \stdClass activity record. */
+    protected $discussion;
+
+    /** @var int context instance ID. */
+    protected $contextid;
+
+    /** @var \stdClass forum post. */
+    protected $post;
+
+    /** @var \stdClass a fieldset object, false or exception if error not found. */
+    protected $studentrole;
+
+    /** @var \stdClass a fieldset object, false or exception if error not found. */
+    protected $teacherrole;
+
     /*
      * Set up for every test
      */
     public function setUp(): void {
         global $DB;
+        parent::setUp();
         $this->resetAfterTest();
 
         $this->course = self::getDataGenerator()->create_course();
@@ -93,7 +133,7 @@ class externallib_test extends externallib_advanced_testcase {
     /**
      * Test get_item_ratings
      */
-    public function test_get_item_ratings() {
+    public function test_get_item_ratings(): void {
         global $DB;
 
         // Rete the discussion as teacher1.
@@ -203,7 +243,7 @@ class externallib_test extends externallib_advanced_testcase {
     /**
      * Test add_rating
      */
-    public function test_add_rating() {
+    public function test_add_rating(): void {
         $this->setUser($this->teacher1);
 
         // First rating of 50.

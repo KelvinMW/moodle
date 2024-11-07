@@ -52,7 +52,6 @@ class attempt {
      */
     public function __construct(stdClass $record) {
         $this->record = $record;
-        $this->results = null;
     }
 
     /**
@@ -87,7 +86,7 @@ class attempt {
         // Remove any xAPI State associated to this attempt.
         $context = \context_module::instance($cm->id);
         $xapihandler = handler::create('mod_h5pactivity');
-        $xapihandler->wipe_states($context->id);
+        $xapihandler->wipe_states($context->id, $user->id);
 
         return new attempt($record);
     }
@@ -117,7 +116,7 @@ class attempt {
      * @param stdClass $cm a course_module record
      * @param stdClass $user a user record
      */
-    public static function delete_all_attempts(stdClass $cm, stdClass $user = null): void {
+    public static function delete_all_attempts(stdClass $cm, ?stdClass $user = null): void {
         global $DB;
 
         $where = 'a.h5pactivityid = :h5pactivityid';

@@ -183,7 +183,8 @@ class manager {
      * @param boolean $sitedbvalues Indicates if $dbsettings comes from the site db or not
      * @param array $settings Array format $array['plugin']['settingname'] = settings_types child class
      * @param array|false $children Array of admin_category children or false
-     * @return    array Array format $array['plugin']['settingname'] = settings_types child class
+     * @return \core_adminpresets\local\setting\adminpresets_setting[][] Array format
+     *    $array['plugin']['settingname'] = adminpresets_setting child class
      */
     public function get_settings(array $dbsettings, bool $sitedbvalues = false, array $settings = [], $children = false): array {
         global $DB;
@@ -760,8 +761,8 @@ class manager {
     public function delete_preset(int $presetid): void {
         global $DB;
 
-        // Check the preset exists.
-        $preset = $DB->get_record('adminpresets', ['id' => $presetid]);
+        // Check the preset exists (cannot delete the pre-installed core "Starter" and "Full" presets).
+        $preset = $DB->get_record('adminpresets', ['id' => $presetid, 'iscore' => self::NONCORE_PRESET]);
         if (!$preset) {
             throw new moodle_exception('errordeleting', 'core_adminpresets');
         }

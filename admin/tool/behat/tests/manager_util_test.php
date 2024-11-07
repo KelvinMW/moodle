@@ -25,6 +25,10 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+namespace tool_behat;
+
+use behat_config_util;
+
 defined('MOODLE_INTERNAL') || die();
 
 global $CFG;
@@ -39,7 +43,7 @@ require_once($CFG->libdir . '/behat/classes/behat_config_manager.php');
  * @copyright  2016 Rajesh Taneja
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class tool_behat_manager_util_testcase extends advanced_testcase {
+class manager_util_test extends \advanced_testcase {
 
     /** @var array Fixtures features which are available. */
     private $featurepaths = array(
@@ -103,11 +107,11 @@ class tool_behat_manager_util_testcase extends advanced_testcase {
      */
     private function get_behat_config_util($behatconfigutil, $notheme = false) {
         // Create a map of arguments to return values.
-        $map = array(
-            array('withfeatures', __DIR__.'/fixtures/theme/withfeatures'),
-            array('nofeatures', __DIR__.'/fixtures/theme/nofeatures'),
-            array('defaulttheme', __DIR__.'/fixtures/theme/defaulttheme'),
-        );
+        $map = [
+            ['withfeatures', self::get_fixture_path(__NAMESPACE__, 'theme/withfeatures')],
+            ['nofeatures', self::get_fixture_path(__NAMESPACE__, 'theme/nofeatures')],
+            ['defaulttheme', self::get_fixture_path(__NAMESPACE__, 'theme/defaulttheme')],
+        ];
         // List of themes is const for test.
         if ($notheme) {
             $themelist = array('defaulttheme');

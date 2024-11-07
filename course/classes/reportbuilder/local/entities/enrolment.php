@@ -42,12 +42,15 @@ use stdClass;
 class enrolment extends base {
 
     /**
-     * Database tables that this entity uses and their default aliases
+     * Database tables that this entity uses
      *
-     * @return array
+     * @return string[]
      */
-    protected function get_default_table_aliases(): array {
-        return ['user_enrolments' => 'ue', 'enrol' => 'e'];
+    protected function get_default_tables(): array {
+        return [
+            'user_enrolments',
+            'enrol',
+        ];
     }
 
     /**
@@ -86,19 +89,6 @@ class enrolment extends base {
      */
     protected function get_all_columns(): array {
         $userenrolments = $this->get_table_alias('user_enrolments');
-        $enrol = $this->get_table_alias('enrol');
-
-        // Enrolment method column.
-        $columns[] = (new column(
-            'method',
-            new lang_string('method', 'enrol'),
-            $this->get_entity_name()
-        ))
-            ->add_joins($this->get_joins())
-            ->set_type(column::TYPE_TEXT)
-            ->add_fields("{$enrol}.enrol, {$enrol}.id")
-            ->set_is_sortable(true)
-            ->add_callback([enrolment_formatter::class, 'enrolment_name']);
 
         // Enrolment time created.
         $columns[] = (new column(
@@ -149,35 +139,8 @@ class enrolment extends base {
             ->add_joins($this->get_joins())
             ->set_type(column::TYPE_TEXT)
             ->add_field($this->get_status_field_sql(), 'status')
-            ->add_field("{$userenrolments}.userid")
             ->set_is_sortable(true)
             ->add_callback([enrolment_formatter::class, 'enrolment_status']);
-
-        // Role method column.
-        $ctx = database::generate_alias();
-        $ra = database::generate_alias();
-        $r = database::generate_alias();
-        $columns[] = (new column(
-            'role',
-            new lang_string('role', 'moodle'),
-            $this->get_entity_name()
-        ))
-            ->add_joins($this->get_joins())
-            ->add_join("LEFT JOIN {context} {$ctx}
-                ON {$ctx}.instanceid = {$enrol}.courseid AND {$ctx}.contextlevel = " . CONTEXT_COURSE)
-            ->add_join("LEFT JOIN {role_assignments} {$ra}
-                ON {$ra}.contextid = {$ctx}.id AND {$ra}.userid = {$userenrolments}.userid")
-            ->add_join("LEFT JOIN {role} {$r} ON {$r}.id = {$ra}.roleid")
-            ->set_type(column::TYPE_TEXT)
-            ->add_fields("{$r}.id, {$r}.name, {$r}.shortname, {$ctx}.instanceid")
-            ->set_is_sortable(true, ["{$r}.shortname"])
-            ->add_callback(static function(?string $value, stdClass $row): string {
-                if (!$row->id) {
-                    return '';
-                }
-                $context = context_course::instance($row->instanceid);
-                return role_get_name($row, $context, ROLENAME_ALIAS);
-            });
 
         return $columns;
     }
@@ -200,7 +163,7 @@ class enrolment extends base {
                            THEN " . status_field::STATUS_NOT_CURRENT . "
                            ELSE " . status_field::STATUS_ACTIVE . "
                       END
-                 ELSE " . status_field::STATUS_SUSPENDED . "
+                 ELSE {$userenrolments}.status
             END";
     }
 
@@ -211,23 +174,6 @@ class enrolment extends base {
      */
     protected function get_all_filters(): array {
         $userenrolments = $this->get_table_alias('user_enrolments');
-        $enrol = $this->get_table_alias('enrol');
-
-        // Enrolment method.
-        $enrolmentmethods = static function(): array {
-            return array_map(static function(enrol_plugin $plugin): string {
-                return get_string('pluginname', 'enrol_' . $plugin->get_name());
-            }, enrol_get_plugins(true));
-        };
-        $filters[] = (new filter(
-            select::class,
-            'method',
-            new lang_string('method', 'enrol'),
-            $this->get_entity_name(),
-            "{$enrol}.enrol"
-        ))
-            ->add_joins($this->get_joins())
-            ->set_options_callback($enrolmentmethods);
 
         // Enrolment time created.
         $filters[] = (new filter(

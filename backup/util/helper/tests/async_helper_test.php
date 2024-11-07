@@ -39,7 +39,7 @@ class async_helper_test extends \advanced_testcase {
     /**
      * Tests sending message for asynchronous backup.
      */
-    public function test_send_message() {
+    public function test_send_message(): void {
         global $DB, $USER;
         $this->preventResetByRollback();
         $this->resetAfterTest(true);
@@ -93,7 +93,7 @@ class async_helper_test extends \advanced_testcase {
     /**
      * Tests getting the asynchronous backup table items.
      */
-    public function test_get_async_backups() {
+    public function test_get_async_backups(): void {
         global $DB, $CFG, $USER, $PAGE;
 
         $this->resetAfterTest(true);
@@ -140,18 +140,17 @@ class async_helper_test extends \advanced_testcase {
         unset($bc);
 
         $coursecontext = \context_course::instance($course->id);
-        $renderer = $PAGE->get_renderer('core', 'backup');
 
-        $result = \async_helper::get_async_backups($renderer, $coursecontext->instanceid);
+        $result = \async_helper::get_async_backups('course', $coursecontext->instanceid);
 
         $this->assertEquals(1, count($result));
-        $this->assertEquals('backup.mbz', $result[0][0]);
+        $this->assertEquals('backup.mbz', $result[0]->filename);
     }
 
     /**
      * Tests getting the backup record.
      */
-    public function test_get_backup_record() {
+    public function test_get_backup_record(): void {
         global $USER;
 
         $this->resetAfterTest();
@@ -173,7 +172,7 @@ class async_helper_test extends \advanced_testcase {
     /**
      * Tests is async pending conditions.
      */
-    public function test_is_async_pending() {
+    public function test_is_async_pending(): void {
         global $USER;
 
         $this->resetAfterTest();
@@ -204,7 +203,7 @@ class async_helper_test extends \advanced_testcase {
     /**
      * Tests is async pending conditions for course copies.
      */
-    public function test_is_async_pending_copy() {
+    public function test_is_async_pending_copy(): void {
         global $USER;
 
         $this->resetAfterTest();

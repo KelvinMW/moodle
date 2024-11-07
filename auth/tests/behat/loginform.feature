@@ -18,17 +18,16 @@ Feature: Test if the login form provides the correct feedback
 
   Scenario: Test login language selector
     Given remote langimport tests are enabled
-    And I log in as "admin"
-    And I navigate to "Language > Language packs" in site administration
-    And I set the field "Available language packs" to "nl,es"
-    And I press "Install selected language pack(s)"
-    And I trigger cron
-    And I am on homepage
-    And I log out
+    And the following "language packs" exist:
+      | language |
+      | nl       |
+      | es       |
+    And the following config values are set as admin:
+      | langmenu | 1 |
     And I follow "Log in"
     And I open the action menu in "region-main" "region"
     # The line below contains the unicode character U+200E before and after the brackets, please be very careful editing this line.
-    And I choose "Nederlands ‎(nl)‎" in the open action menu
+    When I choose "Nederlands ‎(nl)‎" in the open action menu
     Then I should see "Gebruikersnaam"
 
   @_file_upload
@@ -102,3 +101,21 @@ Feature: Test if the login form provides the correct feedback
     And I press "Log in"
     And I press the tab key
     Then the focused element is "Username" "field"
+
+  Scenario: Display the password visibility toggle icon
+    Given the following config values are set as admin:
+      | loginpasswordtoggle | 1 |
+    When I follow "Log in"
+    Then "Toggle sensitive" "button" should be visible
+    And the following config values are set as admin:
+      | loginpasswordtoggle | 0 |
+    And I reload the page
+    And "Toggle sensitive" "button" should not be visible
+
+  Scenario: Display the password visibility toggle icon for small screens only
+    Given the following config values are set as admin:
+      | loginpasswordtoggle | 2 |
+    When I follow "Log in"
+    Then "Toggle sensitive" "button" should not be visible
+    And I change the viewport size to "mobile"
+    And "Toggle sensitive" "button" should be visible

@@ -28,9 +28,12 @@ namespace core_contentbank;
 defined('MOODLE_INTERNAL') || die();
 
 use advanced_testcase;
+use context_block;
 use context_course;
 use context_coursecat;
+use context_module;
 use context_system;
+use context_user;
 use Exception;
 
 global $CFG;
@@ -78,7 +81,7 @@ class contentbank_test extends advanced_testcase {
      *
      * @covers ::get_extension
      */
-    public function test_get_extension(string $filename, string $expected) {
+    public function test_get_extension(string $filename, string $expected): void {
         $this->resetAfterTest();
 
         $cb = new contentbank();
@@ -109,7 +112,7 @@ class contentbank_test extends advanced_testcase {
      *
      * @covers ::load_context_supported_extensions
      */
-    public function test_get_extension_supporter_for_admins(array $supporters, string $extension, string $expected) {
+    public function test_get_extension_supporter_for_admins(array $supporters, string $extension, string $expected): void {
         $this->resetAfterTest();
 
         $cb = new contentbank();
@@ -133,7 +136,7 @@ class contentbank_test extends advanced_testcase {
      *
      * @covers ::load_context_supported_extensions
      */
-    public function test_get_extension_supporter_for_users(array $supporters, string $extension, string $expected) {
+    public function test_get_extension_supporter_for_users(array $supporters, string $extension, string $expected): void {
         $this->resetAfterTest();
 
         $cb = new contentbank();
@@ -158,7 +161,7 @@ class contentbank_test extends advanced_testcase {
      *
      * @covers ::load_context_supported_extensions
      */
-    public function test_get_extension_supporter_for_teachers(array $supporters, string $extension, string $expected) {
+    public function test_get_extension_supporter_for_teachers(array $supporters, string $extension, string $expected): void {
         $this->resetAfterTest();
 
         $cb = new contentbank();
@@ -184,7 +187,7 @@ class contentbank_test extends advanced_testcase {
      *
      * @covers ::get_extension_supporter
      */
-    public function test_get_extension_supporter(array $supporters, string $extension, string $expected) {
+    public function test_get_extension_supporter(array $supporters, string $extension, string $expected): void {
         $this->resetAfterTest();
 
         $cb = new contentbank();
@@ -205,7 +208,7 @@ class contentbank_test extends advanced_testcase {
      * @param  array $contexts List of contexts where to create content.
      */
     public function test_search_contents(?string $search, string $where, int $expectedresult, array $contexts = [],
-            array $contenttypes = null): void {
+            ?array $contenttypes = null): void {
         global $DB, $CFG;
 
         $this->resetAfterTest();
@@ -358,13 +361,13 @@ class contentbank_test extends advanced_testcase {
      *
      * @covers ::create_content_from_file
      */
-    public function test_create_content_from_file() {
+    public function test_create_content_from_file(): void {
         global $USER, $CFG;
 
         $this->resetAfterTest();
         $this->setAdminUser();
         $systemcontext = \context_system::instance();
-        $name = 'greeting-card-887.h5p';
+        $name = 'greeting-card.h5p';
 
         // Create a dummy H5P file.
         $dummyh5p = array(
@@ -392,7 +395,7 @@ class contentbank_test extends advanced_testcase {
      *
      * @covers  ::delete_contents
      */
-    public function test_delete_contents() {
+    public function test_delete_contents(): void {
         global $DB;
 
         $this->resetAfterTest();
@@ -441,7 +444,7 @@ class contentbank_test extends advanced_testcase {
      *
      * @covers  ::delete_contents
      */
-    public function test_delete_contents_for_empty_contentbank() {
+    public function test_delete_contents_for_empty_contentbank(): void {
 
         $this->resetAfterTest();
         $cb = new \core_contentbank\contentbank();
@@ -464,7 +467,7 @@ class contentbank_test extends advanced_testcase {
      *
      * @covers  ::move_contents
      */
-    public function test_move_contents() {
+    public function test_move_contents(): void {
         global $DB;
 
         $this->resetAfterTest();
@@ -497,7 +500,7 @@ class contentbank_test extends advanced_testcase {
      *
      * @covers  ::move_contents
      */
-    public function test_move_contents_for_empty_contentbank() {
+    public function test_move_contents_for_empty_contentbank(): void {
 
         $this->resetAfterTest();
         $cb = new \core_contentbank\contentbank();
@@ -565,7 +568,6 @@ class contentbank_test extends advanced_testcase {
 
             // Replace protected singletoninstance reference (core_plugin_manager property) with mock object.
             $ref = new \ReflectionProperty(\core_plugin_manager::class, 'singletoninstance');
-            $ref->setAccessible(true);
             $ref->setValue(null, $pluginmanager);
 
             // Return values of get_plugins_of_type method.
@@ -589,7 +591,6 @@ class contentbank_test extends advanced_testcase {
             // Get access to private property enabledcontenttypes.
             $rc = new \ReflectionClass(\core_contentbank\contentbank::class);
             $rcp = $rc->getProperty('enabledcontenttypes');
-            $rcp->setAccessible(true);
 
             foreach ($contenttypesenabled as $contenttypename) {
                 $plugins["\\contenttype_$contenttypename\\contenttype"] = $contenttypename;
@@ -612,7 +613,7 @@ class contentbank_test extends advanced_testcase {
      *
      * @covers  ::get_content_from_id
      */
-    public function test_get_content_from_id() {
+    public function test_get_content_from_id(): void {
 
         $this->resetAfterTest();
         $cb = new \core_contentbank\contentbank();
@@ -637,72 +638,35 @@ class contentbank_test extends advanced_testcase {
     /**
      * Test the behaviour of is_context_allowed().
      *
-     * @dataProvider context_provider
-     * @param  \Closure $getcontext Get the context to check.
-     * @param  bool $expectedresult Expected result.
-     *
      * @covers ::is_context_allowed
      */
-    public function test_is_context_allowed(\Closure $getcontext, bool $expectedresult): void {
+    public function test_is_context_allowed(): void {
         $this->resetAfterTest();
 
         $cb = new contentbank();
-        $context = $getcontext();
-        $this->assertEquals($expectedresult, $cb->is_context_allowed($context));
-    }
 
-    /**
-     * Data provider for test_is_context_allowed().
-     *
-     * @return array
-     */
-    public function context_provider(): array {
+        // System context.
+        $this->assertTrue($cb->is_context_allowed(context_system::instance()));
 
-        return [
-            'System context' => [
-                function (): \context {
-                    return \context_system::instance();
-                },
-                true,
-            ],
-            'User context' => [
-                function (): \context {
-                    $user = $this->getDataGenerator()->create_user();
-                    return \context_user::instance($user->id);
-                },
-                false,
-            ],
-            'Course category context' => [
-                function (): \context {
-                    $coursecat = $this->getDataGenerator()->create_category();
-                    return \context_coursecat::instance($coursecat->id);
-                },
-                true,
-            ],
-            'Course context' => [
-                function (): \context {
-                    $course = $this->getDataGenerator()->create_course();
-                    return \context_course::instance($course->id);
-                },
-                true,
-            ],
-            'Module context' => [
-                function (): \context {
-                    $course = $this->getDataGenerator()->create_course();
-                    $module = $this->getDataGenerator()->create_module('page', ['course' => $course->id]);
-                    return \context_module::instance($module->cmid);
-                },
-                false,
-            ],
-            'Block context' => [
-                function (): \context {
-                    $course = $this->getDataGenerator()->create_course();
-                    $coursecontext = context_course::instance($course->id);
-                    $block = $this->getDataGenerator()->create_block('online_users', ['parentcontextid' => $coursecontext->id]);
-                    return \context_block::instance($block->id);
-                },
-                false,
-            ],
-        ];
+        // User context.
+        $user = $this->getDataGenerator()->create_user();
+        $this->assertFalse($cb->is_context_allowed(context_user::instance($user->id)));
+
+        // Category context.
+        $category = $this->getDataGenerator()->create_category();
+        $this->assertTrue($cb->is_context_allowed(context_coursecat::instance($category->id)));
+
+        // Course context.
+        $course = $this->getDataGenerator()->create_course(['category' => $category->id]);
+        $coursecontext = context_course::instance($course->id);
+        $this->assertTrue($cb->is_context_allowed($coursecontext));
+
+        // Module context.
+        $module = $this->getDataGenerator()->create_module('page', ['course' => $course->id]);
+        $this->assertFalse($cb->is_context_allowed(context_module::instance($module->cmid)));
+
+        // Block context.
+        $block = $this->getDataGenerator()->create_block('online_users', ['parentcontextid' => $coursecontext->id]);
+        $this->assertFalse($cb->is_context_allowed(context_block::instance($block->id)));
     }
 }

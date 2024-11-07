@@ -255,9 +255,12 @@ class lesson_page_type_numerical extends lesson_page {
                     $total = $stats["total"];
                     unset($stats["total"]);
                     foreach ($stats as $valentered => $ntimes) {
+                        $valformatted = '';
+                        if (!is_null($valentered) && trim($valentered) !== '') {  // Empty response, 0 could be ok.
+                            $valformatted = s(format_float($valentered, strlen($valentered), true, true));
+                        }
                         $data = '<input class="form-control" type="text" size="50" ' .
-                                'disabled="disabled" readonly="readonly" value="'.
-                                s(format_float($valentered, strlen($valentered), true, true)).'" />';
+                                'disabled="disabled" readonly="readonly" value="'. $valformatted .'" />';
                         $percent = $ntimes / $total * 100;
                         $percent = round($percent, 2);
                         $percent .= "% ".get_string("enteredthis", "lesson");
@@ -270,9 +273,12 @@ class lesson_page_type_numerical extends lesson_page {
             } else if ($useranswer != null && ($answer->id == $useranswer->answerid || ($answer == end($answers) &&
                     empty($answerdata->answers)))) {
                 // Get in here when the user answered or for the last answer.
+                $valformatted = '';
+                if (!is_null($useranswer->useranswer) && trim($useranswer->useranswer) !== '') {  // Empty response, 0 could be ok.
+                    $valformatted = s(format_float($useranswer->useranswer, strlen($useranswer->useranswer), true, true));
+                }
                 $data = '<input class="form-control" type="text" size="50" ' .
-                        'disabled="disabled" readonly="readonly" value="'.
-                        s(format_float($useranswer->useranswer, strlen($useranswer->useranswer), true, true)).'">';
+                        'disabled="disabled" readonly="readonly" value="' . $valformatted .'">';
                 if (isset($pagestats[$this->properties->id][$useranswer->useranswer])) {
                     $percent = $pagestats[$this->properties->id][$useranswer->useranswer] / $pagestats[$this->properties->id]["total"] * 100;
                     $percent = round($percent, 2);
@@ -319,7 +325,7 @@ class lesson_page_type_numerical extends lesson_page {
      * @param stdClass $data The form data to update.
      * @return stdClass The updated fom data.
      */
-    public function update_form_data(stdClass $data) : stdClass {
+    public function update_form_data(stdClass $data): stdClass {
         $answercount = count($this->get_answers());
 
         // If no answers provided, then we don't need to check anything.
@@ -397,7 +403,7 @@ class lesson_add_page_form_numerical extends lesson_add_page_form_base {
      *
      * @return object|void
      */
-    public function get_data() : ?stdClass {
+    public function get_data(): ?stdClass {
         $data = parent::get_data();
 
         if (!empty($data->answer_editor)) {
@@ -415,7 +421,7 @@ class lesson_add_page_form_numerical extends lesson_add_page_form_base {
      *
      * @return object submitted data; NULL if not valid or not submitted or cancelled
      */
-    public function get_submitted_data() : ?stdClass {
+    public function get_submitted_data(): ?stdClass {
         $data = parent::get_submitted_data();
 
         if (!empty($data->answer_editor)) {
