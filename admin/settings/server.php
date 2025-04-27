@@ -25,6 +25,10 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+$ADMIN->add('server', new admin_category('taskconfig', new lang_string('taskadmintitle', 'admin')));
+$ADMIN->add('server', new admin_category('email', new lang_string('categoryemail', 'admin')));
+$ADMIN->add('server', new admin_category('webservicesettings', new lang_string('webservices', 'webservice')));
+
 if ($hassiteconfig) {
     // System paths.
     $temp = new admin_settingpage('systempaths', new lang_string('systempaths', 'admin'));
@@ -181,8 +185,16 @@ if ($hassiteconfig) {
         new lang_string('configproxyuser', 'admin'), ''));
     $temp->add(new admin_setting_configpasswordunmask('proxypassword', new lang_string('proxypassword', 'admin'),
         new lang_string('configproxypassword', 'admin'), ''));
-    $temp->add(new admin_setting_configtext('proxybypass', new lang_string('proxybypass', 'admin'),
-        new lang_string('configproxybypass', 'admin'), 'localhost, 127.0.0.1'));
+
+    $setting = new admin_setting_configtext('proxybypass', new lang_string('proxybypass', 'admin'),
+        new lang_string('configproxybypass', 'admin'), 'localhost,127.0.0.1');
+    $setting->set_updatedcallback(function() {
+        // Normalize $CFG->proxybypass value.
+        $normalizedvalue = \core\ip_utils::normalize_internet_address_list(get_config('core', 'proxybypass'));
+        set_config('proxybypass', $normalizedvalue);
+    });
+    $temp->add($setting);
+
     $temp->add(new admin_setting_configcheckbox('proxylogunsafe', new lang_string('proxylogunsafe', 'admin'),
         new lang_string('configproxylogunsafe_help', 'admin'), 0));
     $temp->add(new admin_setting_configcheckbox('proxyfixunsafe', new lang_string('proxyfixunsafe', 'admin'),
@@ -325,7 +337,6 @@ if ($hassiteconfig) {
     $ADMIN->add('server', $temp);
 
     // Tasks.
-    $ADMIN->add('server', new admin_category('taskconfig', new lang_string('taskadmintitle', 'admin')));
 
     // Task processing.
     $temp = new admin_settingpage('taskprocessing', new lang_string('taskprocessing', 'admin'));
@@ -459,7 +470,6 @@ if ($hassiteconfig) {
     }
 
     // Email.
-    $ADMIN->add('server', new admin_category('email', new lang_string('categoryemail', 'admin')));
 
     // Outgoing mail configuration.
     $temp = new admin_settingpage('outgoingmailconfig', new lang_string('outgoingmailconfig', 'admin'));
@@ -631,7 +641,6 @@ if ($hassiteconfig) {
     }
 
     // Web services.
-    $ADMIN->add('server', new admin_category('webservicesettings', new lang_string('webservices', 'webservice')));
 
     // Web services > Overview.
     $temp = new admin_settingpage('webservicesoverview', new lang_string('webservicesoverview', 'webservice'));

@@ -16,6 +16,9 @@
 
 namespace core_report\output;
 
+use core\output\local\properties\iconsize;
+use core_course\output\activity_icon;
+
 /**
  * Course sections, subsections and activities structure for reports.
  *
@@ -71,7 +74,7 @@ class coursestructure implements \renderable, \templatable {
                 $sectioninfo = $this->modinfo->get_section_info($sectionnum);
 
                 // Don't show subsections here. We are showing them in the corresponding module.
-                if ($sectioninfo->is_delegated()) {
+                if ($sectioninfo->get_component_instance()) {
                     continue;
                 }
 
@@ -128,7 +131,7 @@ class coursestructure implements \renderable, \templatable {
             $sectioninfo = $this->modinfo->get_section_info($sectionnum);
 
             // Don't show subsections here. We are showing them in the corresponding module.
-            if ($sectioninfo->is_delegated()) {
+            if ($sectioninfo->get_component_instance()) {
                 continue;
             }
 
@@ -281,8 +284,12 @@ class coursestructure implements \renderable, \templatable {
             'visible' => $cm->visible,
             'cells' => [],
         ];
+
+        $activityicon = activity_icon::from_cm_info($cm)
+            ->set_icon_size(iconsize::SIZE4);
+
         $dataactivity['activitycolumn'] = [
-                'activityicon' => $output->pix_icon('monologo', $modulename, $cm->modname, ['class' => 'icon']),
+                'activityicon' => $output->render($activityicon),
                 'link' => "$CFG->wwwroot/mod/$cm->modname/view.php?id=$cm->id",
                 'text' => $cm->name,
         ];

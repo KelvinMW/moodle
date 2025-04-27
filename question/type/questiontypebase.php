@@ -1396,7 +1396,9 @@ class question_type {
      * required to set up and save a question of any type for testing purposes.
      * Alternate DB table prefix may be used to facilitate data deletion.
      */
+    #[\core\attribute\deprecated(replacement: null, since: '5.0', mdl: 'MDL-71378')]
     public function generate_test($name, $courseid=null) {
+        \core\deprecation::emit_deprecation_if_present([$this, __FUNCTION__]);
         $form = new stdClass();
         $form->name = $name;
         $form->questiontextformat = 1;
@@ -1446,8 +1448,10 @@ class question_type {
     protected function import_or_save_files($field, $context, $component, $filearea, $itemid) {
         if (!empty($field['itemid'])) {
             // This is the normal case. We are safing the questions editing form.
-            return file_save_draft_area_files($field['itemid'], $context->id, $component,
+            $result = file_save_draft_area_files($field['itemid'], $context->id, $component,
                     $filearea, $itemid, $this->fileoptions, trim($field['text']));
+            file_clear_draft_area($field['itemid']);
+            return $result;
 
         } else if (!empty($field['files'])) {
             // This is the case when we are doing an import.

@@ -17,6 +17,7 @@
 namespace core_user;
 
 use core_text;
+use core_user;
 
 /**
  * Class for retrieving information about user fields that are needed for displaying user identity.
@@ -536,7 +537,7 @@ class fields {
                                  $DB->sql_equal($fieldalias . '.shortname', $placeholder, false) . "
                        LEFT JOIN {user_info_data} $dataalias ON $dataalias.fieldid = $fieldalias.id
                                  AND $dataalias.userid = {$usertable}id";
-                // For Oracle we need to convert the field into a usable format.
+                // For sqlsrv we need to convert the field into a usable format.
                 $fieldsql = $DB->sql_compare_text($dataalias . '.data', 255);
                 $selects .= ", $fieldsql AS $prefix$field";
                 $mappings[$field] = $fieldsql;
@@ -585,10 +586,7 @@ class fields {
         $unique = self::$uniqueidentifier++;
 
         $namefields = self::get_name_fields();
-
-        // Create a dummy user object containing all name fields.
-        $dummyuser = (object) array_combine($namefields, $namefields);
-        $dummyfullname = fullname($dummyuser, $override);
+        $dummyfullname = core_user::get_dummy_fullname(null, ['override' => $override]);
 
         // Extract any name fields from the fullname format in the order that they appear.
         $matchednames = array_values(order_in_string($namefields, $dummyfullname));
@@ -613,7 +611,7 @@ class fields {
             }
 
             if (core_text::strlen($chunk) > 0) {
-                // If content is just whitespace, add to elements directly (also Oracle doesn't support passing ' ' as param).
+                // If content is just whitespace, add it directly to elements to handle it appropriately.
                 if (preg_match('/^\s+$/', $chunk)) {
                     $elements[] = "'$chunk'";
                 } else {

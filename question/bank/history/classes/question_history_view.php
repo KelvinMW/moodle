@@ -63,6 +63,10 @@ class question_history_view extends view {
         array $params = [],
         array $extraparams = [],
     ) {
+        if ($cm === null) {
+            debugging('$cm is now a required field', DEBUG_DEVELOPER);
+        }
+
         $this->entryid = $extraparams['entryid'];
         $this->basereturnurl = new \moodle_url($extraparams['returnurl']);
         parent::__construct($contexts, $pageurl, $course, $cm, $params, $extraparams);
@@ -86,10 +90,12 @@ class question_history_view extends view {
         return $this->requiredcolumns;
     }
 
+    /**
+     * @deprecated since Moodle 4.3 MDL-72321
+     */
+    #[\core\attribute\deprecated('filtering objects', since: '4.3', mdl: 'MDL-72321', final: true)]
     protected function display_advanced_search_form($advancedsearch): void {
-        foreach ($advancedsearch as $searchcondition) {
-            echo $searchcondition->display_options_adv();
-        }
+        \core\deprecation::emit_deprecation_if_present([self::class, __FUNCTION__]);
     }
 
     public function allow_add_questions(): bool {
@@ -97,18 +103,9 @@ class question_history_view extends view {
         return false;
     }
 
-    /**
-     * Default sort for question data.
-     * @return array
-     */
+    #[\Override]
     protected function default_sort(): array {
-        $defaultsort = [];
-        if (class_exists('\\qbank_viewcreator\\creator_name_column')) {
-            $sort = 'qbank_viewcreator\creator_name_column-timecreated';
-        }
-        $defaultsort[$sort] = 1;
-
-        return $defaultsort;
+        return ['qbank_history__version_number_column' => SORT_ASC];
     }
 
     protected function build_query(): void {

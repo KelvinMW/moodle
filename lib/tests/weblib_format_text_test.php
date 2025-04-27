@@ -27,7 +27,7 @@ namespace core;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU Public License
  * @covers ::format_text
  */
-class weblib_format_text_test extends \advanced_testcase {
+final class weblib_format_text_test extends \advanced_testcase {
 
     public function test_format_text_format_html(): void {
         $this->resetAfterTest();
@@ -149,7 +149,7 @@ class weblib_format_text_test extends \advanced_testcase {
      *
      * @return array of testcases
      */
-    public function format_text_blanktarget_testcases() {
+    public static function format_text_blanktarget_testcases(): array {
         return [
             'Simple link' => [
                 '<a href="https://www.youtube.com/watch?v=JeimE8Wz6e4">Hey, that\'s pretty good!</a>',
@@ -230,7 +230,7 @@ class weblib_format_text_test extends \advanced_testcase {
      *
      * @return array of testcases (string)testcasename => [(string)input, (string)nocleaned, (string)cleaned]
      */
-    public function format_text_cleaning_testcases() {
+    public static function format_text_cleaning_testcases(): array {
         return [
             'JavaScript' => [
                 'Hello <script type="text/javascript">alert("XSS");</script> world',
@@ -261,6 +261,11 @@ class weblib_format_text_test extends \advanced_testcase {
                 '<img src=x onerror="&#0000106&#0000097&#0000118&#0000097&#0000115&#0000099&#0000083&#0000083&#0000039&#0000041">',
                 '<img src=x onerror="&#0000106&#0000097&#0000118&#0000097&#0000115&#0000099&#0000083&#0000083&#0000039&#0000041">',
                 '<img src="x" alt="x" />',
+            ],
+            'IMG border-radius' => [
+                '<img src=x style="border-radius: 10px;">',
+                '<img src=x style="border-radius: 10px;">',
+                '<img src="x" style="border-radius:10px;" alt="x" />',
             ],
             'DIV background-image' => [
                 '<DIV STYLE="background-image: url(javascript:alert(\'XSS\'))">',

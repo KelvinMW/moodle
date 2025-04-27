@@ -27,12 +27,13 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use core\output\notification;
 use core_cache\application_cache;
 use core_cache\data_source_interface;
 use core_cache\definition;
 use core_question\local\bank\question_version_status;
 use core_question\output\question_version_info;
-
+use qbank_previewquestion\question_preview_options;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -81,6 +82,23 @@ abstract class question_bank {
     public static function is_qtype_installed($qtypename) {
         $plugindir = core_component::get_plugin_directory('qtype', $qtypename);
         return $plugindir && is_readable($plugindir . '/questiontype.php');
+    }
+
+    /**
+     * Check if a given question type is one that is installed and usable.
+     *
+     * Use this before doing things like rendering buttons/options which will only work for
+     * installed question types.
+     *
+     * When loaded through most of the core_question areas, qtype will still be the uninstalled type, e.g. 'mytype',
+     * but when we get to the quiz pages, it will have been converted to 'missingtype'. So we need to check that
+     * as well here.
+     *
+     * @param string $qtypename e.g. 'multichoice'.
+     * @return bool
+     */
+    public static function is_qtype_usable(string $qtypename): bool {
+        return self::is_qtype_installed($qtypename) && $qtypename !== 'missingtype';
     }
 
     /**
@@ -297,6 +315,49 @@ abstract class question_bank {
     }
 
     /**
+     * Render a throw-away preview of a question.
+     *
+     * If the question cannot be rendered (e.g. because it is not installed)
+     * then display a message instead.
+     *
+     * @param question_definition $question a question.
+     * @return string HTML to output.
+     */
+    public static function render_preview_of_question(question_definition $question): string {
+        global $DB, $OUTPUT, $USER;
+
+        if (!self::is_qtype_usable($question->qtype->name())) {
+            // TODO MDL-84902 ideally this would be changed to render at least the qeuestion text.
+            // See, for example, test_render_missing in question/type/missingtype/tests/missingtype_test.php.
+            return $OUTPUT->notification(
+                get_string('invalidquestiontype', 'question', $question->qtype->name()),
+                notification::NOTIFY_WARNING,
+                closebutton: false);
+        }
+
+        // TODO MDL-84902 remove this dependency on a class from qbank_previewquestion plugin.
+        if (!class_exists(question_preview_options::class)) {
+            debugging('Preview cannot be rendered. The standard plugin ' .
+                'qbank_previewquestion plugin has been removed.', DEBUG_DEVELOPER);
+            return '';
+        }
+
+        $quba = question_engine::make_questions_usage_by_activity(
+            'core_question_preview', context_user::instance($USER->id));
+        $options = new question_preview_options($question);
+        $quba->set_preferred_behaviour($options->behaviour);
+
+        $slot = $quba->add_question($question, $options->maxmark);
+        $quba->start_question($slot, $options->variant);
+
+        $transaction = $DB->start_delegated_transaction();
+        question_engine::save_questions_usage_by_activity($quba);
+        $transaction->allow_commit();
+
+        return $quba->render_question($slot, $options, '1');
+    }
+
+    /**
      * Get all the versions of a particular question.
      *
      * @param int $questionid id of the question
@@ -335,6 +396,31 @@ abstract class question_bank {
               ORDER BY qv.questionbankentryid, qv.version DESC";
         $result = [];
         $rows = $DB->get_recordset_sql($sql, $params);
+        foreach ($rows as $row) {
+            $result[$row->questionbankentryid][$row->version] = $row->questionid;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Retrieves version information for a list of questions.
+     *
+     * @param array $questionids Array of question ids.
+     * @return array An array question_bank_entries.id => version number => question.id.
+     */
+    public static function get_version_of_questions(array $questionids): array {
+        global $DB;
+
+        [$listquestionid, $params] = $DB->get_in_or_equal($questionids, SQL_PARAMS_NAMED);
+        $sql = "SELECT qv.questionid, qv.version, qv.questionbankentryid
+                  FROM {question_versions} qv
+                  JOIN {question_bank_entries} qbe ON qv.questionbankentryid = qbe.id
+                 WHERE qv.questionid $listquestionid
+              ORDER BY qv.version DESC";
+
+        $rows = $DB->get_recordset_sql($sql, $params);
+        $result = [];
         foreach ($rows as $row) {
             $result[$row->questionbankentryid][$row->version] = $row->questionid;
         }

@@ -69,6 +69,7 @@ final class create_module_test extends \externallib_advanced_testcase {
 
         // Execute course action.
         $results = json_decode(create_module::execute((int)$course->id, $modname, (int)$targetsection->id, (int)$activity->id));
+        $this->assertDebuggingCalled();
 
         // Check result.
         $cmupdate = $this->find_update_by_fieldname($results, 'put', 'cm', get_string('quickcreatename', 'mod_' . $modname));
@@ -84,9 +85,6 @@ final class create_module_test extends \externallib_advanced_testcase {
      */
     public function test_execute_with_format_override(): void {
         $this->resetAfterTest();
-
-        $manager = \core_plugin_manager::resolve_plugininfo_class('mod');
-        $manager::enable_plugin('subsection', 1);
 
         // Create a course.
         $course = $this->getDataGenerator()->create_course(['format' => 'theunittest', 'numsections' => 1, 'initsections' => 1]);
@@ -125,6 +123,7 @@ final class create_module_test extends \externallib_advanced_testcase {
         // Execute course action.
         $modname = 'book';
         create_module::execute((int)$course->id, $modname, (int)$targetsection->id);
+        $this->assertDebuggingCalled();
     }
 
     /**

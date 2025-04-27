@@ -36,7 +36,7 @@ require_once($CFG->dirroot . '/mod/quiz/locallib.php');
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @covers \mod_quiz\quiz_attempt
  */
-class attempt_test extends \advanced_testcase {
+final class attempt_test extends \advanced_testcase {
 
     /**
      * Create quiz and attempt data with layout.
@@ -570,5 +570,22 @@ class attempt_test extends \advanced_testcase {
         $this->assertEquals('Reading', $grades[$readinggrade->id]->name);
         $this->assertEquals(0, $grades[$readinggrade->id]->grade);
         $this->assertEquals(1, $grades[$readinggrade->id]->maxgrade);
+    }
+
+    /**
+     * When creating a new quiz attempt, question attempts should be created with the first step's timecreated set to null.
+     *
+     * When the question attempt is rendered, it should be set to the current time.
+     *
+     * @return void
+     * @throws \coding_exception
+     * @covers ::quiz_start_new_attempt
+     */
+    public function test_step_timecreated_unset_when_starting_quiz_attempt(): void {
+        $attempt = $this->create_quiz_and_attempt_with_layout('1');
+        $questionattempt = $attempt->get_question_attempt(1);
+        $this->assertEquals(\question_attempt_step::TIMECREATED_ON_FIRST_RENDER, $questionattempt->get_step(0)->get_timecreated());
+        $questionattempt->render(new \question_display_options(), 1);
+        $this->assertEqualsWithDelta(time(), $questionattempt->get_step(0)->get_timecreated(), 1);
     }
 }

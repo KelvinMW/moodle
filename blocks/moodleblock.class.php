@@ -389,16 +389,6 @@ class block_base {
     }
 
     /**
-     * Default behavior: save all variables as $CFG properties
-     * You don't need to override this if you 're satisfied with the above
-     *
-     * @deprecated since Moodle 2.9 MDL-49385 - Please use Admin Settings functionality to save block configuration.
-     */
-    function config_save($data) {
-        throw new coding_exception('config_save() can not be used any more, use Admin Settings functionality to save block configuration.');
-    }
-
-    /**
      * Which page types this block may appear on.
      *
      * The information returned here is processed by the
@@ -446,8 +436,11 @@ class block_base {
         $attributes = array(
             'id' => 'inst' . $this->instance->id,
             'class' => 'block_' . $this->name() . ' block',
-            'role' => $this->get_aria_role()
         );
+        $ariarole = $this->get_aria_role();
+        if ($ariarole) {
+            $attributes['role'] = $ariarole;
+        }
         if ($this->hide_header()) {
             $attributes['class'] .= ' no-header';
         }
@@ -739,20 +732,19 @@ EOD;
      * a landmark child.
      *
      * Options are as follows:
+     *    - application
      *    - landmark
-     *      - application
-     *      - banner
-     *      - complementary
-     *      - contentinfo
      *      - form
-     *      - main
      *      - navigation
      *      - search
+     *
+     * Please do not use top-level landmark roles such as 'banner', 'complementary', 'contentinfo', or 'main'. Read more at
+     * {@link https://www.w3.org/WAI/ARIA/apg/practices/landmark-regions/ ARIA Authoring Practices Guide - Landmark Regions}
      *
      * @return string
      */
     public function get_aria_role() {
-        return 'complementary';
+        return 'region';
     }
 
     /**

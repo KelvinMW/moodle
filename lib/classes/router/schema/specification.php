@@ -23,6 +23,7 @@ use core\router\route;
 use core\router\route_loader_interface;
 use core\router\schema\objects\type_base;
 use core\router\schema\response\response;
+use core\router\util;
 use core\url;
 use stdClass;
 
@@ -263,26 +264,25 @@ class specification implements
         route $route,
     ): self {
         // Compile the final path, complete with component prefix.
-        [$type, $subsystem] = \core_component::normalize_component($component);
-
-        if ($type === 'core') {
-            if ($subsystem) {
-                $path = "/{$subsystem}";
-            } else {
-                $path = "/core";
-            }
-        } else {
-            $path = "/{$component}";
-        }
+        $path = "/";
+        $path .= util::normalise_component_path($component);
         $path .= $route->get_path();
 
         // Helper to add the path to the specification.
         // Note: We use this helper because OpenAPI does not support optional parameters.
         // Therefore we must handle that in Moodle, adding path variants with and without each optional parameter.
         $addpath = function (string $path) use ($route, $component) {
-            // Remove the optional parameters delimiters from the path.
             $path = str_replace(
-                ['[', ']'],
+                [
+                    // Remove the optional parameters delimiters from the path.
+                    '[',
+                    ']',
+
+                    // Remove the greedy and non-greedy unlimited delimters from the path too.
+                    // These are a FastRoute feature not compatible with OpenAPI.
+                    ':.*?',
+                    ':.*',
+                ],
                 '',
                 $path,
             );

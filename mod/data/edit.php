@@ -80,11 +80,6 @@ if ($manager->can_manage_templates()) {
     }
 }
 
-if ($rid) {
-    // When editing an existing record, we require the session key.
-    require_sesskey();
-}
-
 // Get Group information for permission testing and record creation.
 $currentgroup = groups_get_activity_group($cm);
 $groupmode = groups_get_activity_groupmode($cm);
@@ -121,7 +116,7 @@ if ($rid) {
     $PAGE->navbar->add(get_string('editentry', 'data'));
 }
 
-$PAGE->add_body_class('mediumwidth');
+$PAGE->add_body_class('limitedwidth');
 if ($rid) {
     $pagename = get_string('editentry', 'data');
 } else {

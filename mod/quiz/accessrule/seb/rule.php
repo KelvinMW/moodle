@@ -252,6 +252,8 @@ class quizaccess_seb extends access_rule_base {
                 . 'seb.userconfirmquit AS seb_userconfirmquit, '
                 . 'seb.enableaudiocontrol AS seb_enableaudiocontrol, '
                 . 'seb.muteonstartup AS seb_muteonstartup, '
+                . 'seb.allowcapturecamera AS seb_allowcapturecamera, '
+                . 'seb.allowcapturemicrophone AS seb_allowcapturemicrophone, '
                 . 'seb.allowspellchecking AS seb_allowspellchecking, '
                 . 'seb.allowreloadinexam AS seb_allowreloadinexam, '
                 . 'seb.activateurlfiltering AS seb_activateurlfiltering, '
@@ -534,7 +536,12 @@ class quizaccess_seb extends access_rule_base {
         $button = '';
 
         if (!empty($this->get_seb_download_url())) {
-            $button = $OUTPUT->single_button($this->get_seb_download_url(), get_string('sebdownloadbutton', 'quizaccess_seb'));
+            $sebdownloadlink = $this->get_seb_download_url();
+            $button = html_writer::start_tag('div', ['class' => 'singlebutton']);
+            $button .= html_writer::link($sebdownloadlink, get_string('sebdownloadbutton', 'quizaccess_seb'),
+                ['class' => 'btn btn-secondary', 'target' => '_blank']);
+            $button .= html_writer::end_tag('div');
+
         }
 
         return $button;

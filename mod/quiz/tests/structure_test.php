@@ -33,7 +33,7 @@ require_once($CFG->dirroot . '/mod/quiz/tests/quiz_question_helper_test_trait.ph
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @covers \mod_quiz\structure
  */
-class structure_test extends \advanced_testcase {
+final class structure_test extends \advanced_testcase {
 
     use \quiz_question_helper_test_trait;
 
@@ -1001,13 +1001,13 @@ class structure_test extends \advanced_testcase {
 
         $generator = $this->getDataGenerator();
         $teacher = $generator->create_and_enrol($course, 'editingteacher');
-        $noneditingteacher = $generator->create_and_enrol($course, 'teacher');
+        $nonteacher = $generator->create_and_enrol($course, 'student');
 
         $this->setUser($teacher);
         $structure = structure::create_for_quiz($quiz);
         $this->assertTrue($structure->can_add_random_questions());
 
-        $this->setUser($noneditingteacher);
+        $this->setUser($nonteacher);
         $structure = structure::create_for_quiz($quiz);
         $this->assertFalse($structure->can_add_random_questions());
     }

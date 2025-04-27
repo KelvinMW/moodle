@@ -274,7 +274,7 @@ class flexible_table {
     }
 
     /**
-     * Use text sorting functions for this column (required for text columns with Oracle).
+     * Use text sorting functions for this column.
      * Be warned that you cannot use this with column aliases. You can only do this
      * with real columns. See MDL-40481 for an example.
      * @param string column name
@@ -1866,7 +1866,7 @@ class flexible_table {
         // Start of main data table.
 
         if ($this->responsive) {
-            echo html_writer::start_tag('div', ['class' => 'no-overflow']);
+            echo html_writer::start_tag('div', ['class' => 'table-responsive']);
         }
         echo html_writer::start_tag('table', $this->attributes) . $this->render_caption();
     }

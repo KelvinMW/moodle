@@ -76,10 +76,13 @@ class notification_helper {
         $sql = "SELECT DISTINCT a.id
                   FROM {assign} a
                   JOIN {course_modules} cm ON a.id = cm.instance
+                  JOIN {course} c ON a.course = c.id
                   JOIN {modules} m ON cm.module = m.id AND m.name = :modulename
              LEFT JOIN {assign_overrides} ao ON a.id = ao.assignid
                  WHERE (a.duedate < :futuretime OR ao.duedate < :ao_futuretime)
-                   AND (a.duedate > :timenow OR ao.duedate > :ao_timenow)";
+                   AND (a.duedate > :timenow OR ao.duedate > :ao_timenow)
+                   AND cm.visible = 1
+                   AND c.visible = 1";
 
         $params = [
             'timenow' => $timenow,
@@ -113,12 +116,15 @@ class notification_helper {
         $sql = "SELECT DISTINCT a.id
                   FROM {assign} a
                   JOIN {course_modules} cm ON a.id = cm.instance
+                  JOIN {course} c ON a.course = c.id
                   JOIN {modules} m ON cm.module = m.id AND m.name = :modulename
              LEFT JOIN {assign_overrides} ao ON a.id = ao.assignid
                  WHERE (a.duedate < :dd_timenow OR ao.duedate < :dd_ao_timenow)
                    AND (a.duedate > :dd_timewindow OR ao.duedate > :dd_ao_timewindow)
                    AND ((a.cutoffdate > :co_timenow OR a.cutoffdate = 0) OR
-                       (ao.cutoffdate > :co_ao_timenow OR ao.cutoffdate = 0))";
+                       (ao.cutoffdate > :co_ao_timenow OR ao.cutoffdate = 0))
+                   AND cm.visible = 1
+                   AND c.visible = 1";
 
         $params = [
             'dd_timenow' => $timenow,
@@ -147,10 +153,13 @@ class notification_helper {
         $sql = "SELECT DISTINCT a.id
                   FROM {assign} a
                   JOIN {course_modules} cm ON a.id = cm.instance
+                  JOIN {course} c ON a.course = c.id
                   JOIN {modules} m ON cm.module = m.id AND m.name = :modulename
              LEFT JOIN {assign_overrides} ao ON a.id = ao.assignid
                  WHERE (a.duedate <= :endofday OR ao.duedate <= :ao_endofday)
-                   AND (a.duedate >= :startofday OR ao.duedate >= :ao_startofday)";
+                   AND (a.duedate >= :startofday OR ao.duedate >= :ao_startofday)
+                   AND cm.visible = 1
+                   AND c.visible = 1";
 
         $params = [
             'startofday' => $day['start'],
@@ -190,6 +199,8 @@ class notification_helper {
                  WHERE (a.duedate <= :endofday OR ao.duedate <= :ao_endofday)
                    AND (a.duedate >= :startofday OR ao.duedate >= :ao_startofday)
                    AND ue.userid = :userid
+                   AND cm.visible = 1
+                   AND c.visible = 1
               ORDER BY a.duedate ASC";
 
         $params = [
@@ -220,7 +231,8 @@ class notification_helper {
 
         foreach ($users as $key => $user) {
             // Check if the user has submitted already.
-            if ($assignmentobj->get_user_submission($user->id, false)) {
+            $submission = $assignmentobj->get_user_submission($user->id, false);
+            if ($submission && $submission->status === ASSIGN_SUBMISSION_STATUS_SUBMITTED) {
                 unset($users[$key]);
                 continue;
             }
@@ -320,7 +332,8 @@ class notification_helper {
         }
 
         // Check if the user has submitted already.
-        if ($assignmentobj->get_user_submission($userid, false)) {
+        $submission = $assignmentobj->get_user_submission($userid, false);
+        if ($submission && $submission->status === ASSIGN_SUBMISSION_STATUS_SUBMITTED) {
             return;
         }
 
@@ -346,6 +359,7 @@ class notification_helper {
             'subject' => get_string('assignmentduesoonsubject', 'mod_assign', $stringparams),
             'assignmentname' => $assignmentobj->get_instance()->name,
             'html' => get_string('assignmentduesoonhtml', 'mod_assign', $stringparams),
+            'sms' => get_string('assignmentduesoonsms', 'mod_assign', $stringparams),
         ];
 
         $message = new \core\message\message();
@@ -357,6 +371,7 @@ class notification_helper {
         $message->fullmessageformat = FORMAT_HTML;
         $message->fullmessage = html_to_text($messagedata['html']);
         $message->fullmessagehtml = $messagedata['html'];
+        $message->fullmessagesms = $messagedata['sms'];
         $message->smallmessage = $messagedata['subject'];
         $message->notification = 1;
         $message->contexturl = $messagedata['url'];
@@ -400,7 +415,8 @@ class notification_helper {
         }
 
         // Check if the user has submitted already.
-        if ($assignmentobj->get_user_submission($userid, false)) {
+        $submission = $assignmentobj->get_user_submission($userid, false);
+        if ($submission && $submission->status === ASSIGN_SUBMISSION_STATUS_SUBMITTED) {
             return;
         }
 
@@ -432,6 +448,7 @@ class notification_helper {
             'subject' => get_string('assignmentoverduesubject', 'mod_assign', $stringparams),
             'assignmentname' => $assignmentobj->get_instance()->name,
             'html' => get_string('assignmentoverduehtml', 'mod_assign', $stringparams),
+            'sms' => get_string('assignmentoverduesms', 'mod_assign', $stringparams),
         ];
 
         $message = new \core\message\message();
@@ -443,6 +460,7 @@ class notification_helper {
         $message->fullmessageformat = FORMAT_HTML;
         $message->fullmessage = html_to_text($messagedata['html']);
         $message->fullmessagehtml = $messagedata['html'];
+        $message->fullmessagesms = $messagedata['sms'];
         $message->smallmessage = $messagedata['subject'];
         $message->notification = 1;
         $message->contexturl = $messagedata['url'];
@@ -471,7 +489,8 @@ class notification_helper {
             $assignmentobj = self::get_assignment_data($assignment->id);
 
             // Check if the user has submitted already.
-            if ($assignmentobj->get_user_submission($userid, false)) {
+            $submission = $assignmentobj->get_user_submission($userid, false);
+            if ($submission && $submission->status === ASSIGN_SUBMISSION_STATUS_SUBMITTED) {
                 continue;
             }
 
@@ -529,6 +548,7 @@ class notification_helper {
             'user' => $userobject,
             'subject' => get_string('assignmentduedigestsubject', 'mod_assign'),
             'html' => get_string('assignmentduedigesthtml', 'mod_assign', $stringparams),
+            'sms' => get_string('assignmentduedigestsms', 'mod_assign', $stringparams),
         ];
 
         $message = new \core\message\message();
@@ -540,6 +560,7 @@ class notification_helper {
         $message->fullmessageformat = FORMAT_HTML;
         $message->fullmessage = html_to_text($messagedata['html']);
         $message->fullmessagehtml = $messagedata['html'];
+        $message->fullmessagesms = $messagedata['sms'];
         $message->smallmessage = $messagedata['subject'];
         $message->notification = 1;
 

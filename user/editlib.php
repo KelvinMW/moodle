@@ -31,8 +31,8 @@ require_once($CFG->dirroot . '/user/lib.php');
  */
 function cancel_email_update($userid) {
     unset_user_preference('newemail', $userid);
-    unset_user_preference('newemailkey', $userid);
     unset_user_preference('newemailattemptsleft', $userid);
+    delete_user_key('core_user/email_change', $userid);
 }
 
 /**
@@ -184,15 +184,6 @@ function useredit_update_user_preference($usernew) {
             }
         }
     }
-}
-
-/**
- * @deprecated since Moodle 3.2
- * @see core_user::update_picture()
- */
-function useredit_update_picture() {
-    throw new coding_exception('useredit_update_picture() can not be used anymore. Please use ' .
-        'core_user::update_picture() instead.');
 }
 
 /**

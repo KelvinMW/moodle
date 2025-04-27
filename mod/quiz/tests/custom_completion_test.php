@@ -40,7 +40,7 @@ require_once($CFG->libdir . '/completionlib.php');
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @coversDefaultClass \mod_quiz\completion\custom_completion
  */
-class custom_completion_test extends advanced_testcase {
+final class custom_completion_test extends advanced_testcase {
 
     /**
      * Setup function for all tests.
@@ -132,7 +132,8 @@ class custom_completion_test extends advanced_testcase {
         // Finish the attempt.
         $attemptobj = quiz_attempt::create($attempt->id);
         $this->assertTrue($attemptobj->has_response_to_at_least_one_graded_question());
-        $attemptobj->process_finish($timenow, false);
+        $attemptobj->process_submit($timenow, false);
+        $attemptobj->process_grade_submission($timenow);
     }
 
     /**

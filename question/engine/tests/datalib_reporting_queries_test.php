@@ -39,7 +39,7 @@ require_once(__DIR__ . '/helpers.php');
  * @copyright 2013 The Open University
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class datalib_reporting_queries_test extends \qbehaviour_walkthrough_test_base {
+final class datalib_reporting_queries_test extends \qbehaviour_walkthrough_test_base {
 
     /** @var question_engine_data_mapper */
     protected $dm;
@@ -373,7 +373,8 @@ class datalib_reporting_queries_test extends \qbehaviour_walkthrough_test_base {
         // Submit attempt.
         $attemptobj = quiz_attempt::create($attempt->id);
         $attemptobj->process_submitted_actions($timenow, false);
-        $attemptobj->process_finish($timenow, false);
+        $attemptobj->process_submit($timenow, false);
+        $attemptobj->process_grade_submission($timenow);
 
         // Calculate the statistics.
         $this->expectOutputRegex('~.*Calculations completed.*~');

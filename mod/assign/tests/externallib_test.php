@@ -39,7 +39,7 @@ require_once(__DIR__ . '/fixtures/testable_assign.php');
  * @copyright 2012 Paul Charsley
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class externallib_test extends \mod_assign\externallib_advanced_testcase {
+final class externallib_test extends \mod_assign\externallib_advanced_testcase {
 
     /**
      * Test get_grades
@@ -189,6 +189,7 @@ class externallib_test extends \mod_assign\externallib_advanced_testcase {
             'markingallocation' => 1,
             'blindmarking' => 1,
             'markinganonymous' => 1,
+            'gradepenalty' => 1,
             'activityeditor' => [
                 'text' => 'Test activity',
                 'format' => 1,
@@ -253,6 +254,7 @@ class externallib_test extends \mod_assign\externallib_advanced_testcase {
         $this->assertEquals(1, $assignment['markingallocation']);
         $this->assertEquals(1, $assignment['blindmarking']);
         $this->assertEquals(1, $assignment['markinganonymous']);
+        $this->assertEquals(1, $assignment['gradepenalty']);
         $this->assertEquals(0, $assignment['preventsubmissionnotingroup']);
         $this->assertEquals(0, $assignment['timelimit']);
         $this->assertEquals(0, $assignment['submissionattachments']);
@@ -286,6 +288,7 @@ class externallib_test extends \mod_assign\externallib_advanced_testcase {
         $this->assertEquals(1, $assignment['markingallocation']);
         $this->assertEquals(1, $assignment['blindmarking']);
         $this->assertEquals(1, $assignment['markinganonymous']);
+        $this->assertEquals(1, $assignment['gradepenalty']);
         $this->assertEquals(0, $assignment['preventsubmissionnotingroup']);
 
         $result = mod_assign_external::get_assignments(array($course2->id));
@@ -2771,7 +2774,7 @@ class externallib_test extends \mod_assign\externallib_advanced_testcase {
     /**
      * The test_get_participant_relative_dates data provider.
      */
-    public function get_participant_relative_dates_provider() {
+    public static function get_participant_relative_dates_provider(): array {
         $timenow = time();
 
         return [

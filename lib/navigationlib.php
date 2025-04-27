@@ -3162,6 +3162,16 @@ class global_navigation extends navigation_node {
                 navigation_node::TYPE_SETTING, null, 'communication');
         }
 
+        if ($navoptions->overview) {
+            $coursenode->add(
+                text: get_string('activities'),
+                action: new moodle_url('/course/overview.php', ['id' => $course->id]),
+                type: self::TYPE_CONTAINER,
+                key: 'courseoverview',
+                icon: new pix_icon('i/info', ''),
+            );
+        }
+
         return true;
     }
     /**
@@ -4849,7 +4859,10 @@ class settings_navigation extends navigation_node {
         }
 
         if (!$adminoptions->update && $adminoptions->tags) {
-            $url = new moodle_url('/course/tags.php', array('id' => $course->id));
+            $url = \core\router\util::get_path_for_callable([
+                \core_course\route\controller\tags_controller::class,
+                'administer_tags',
+            ], ['course' => $course->id]);
             $coursenode->add(get_string('coursetags', 'tag'), $url, self::TYPE_SETTING, null, 'coursetags', new pix_icon('i/settings', ''));
             $coursenode->get('coursetags')->set_force_into_more_menu();
         }
@@ -4891,6 +4904,9 @@ class settings_navigation extends navigation_node {
             }
         }
 
+        // Grade penalty navigation.
+        \core_grades\penalty_manager::extend_navigation_course($coursenode, $course, $coursecontext);
+
         // Check if we can view the gradebook's setup page.
         if ($adminoptions->gradebook) {
             $url = new moodle_url('/grade/edit/tree/index.php', array('id' => $course->id));
@@ -4915,7 +4931,8 @@ class settings_navigation extends navigation_node {
 
         // Questions
         require_once($CFG->libdir . '/questionlib.php');
-        question_extend_settings_navigation($coursenode, $coursecontext)->trim_if_empty();
+        $baseurl = \core_question\local\bank\question_bank_helper::get_url_for_qbank_list($course->id);
+        question_extend_settings_navigation($coursenode, $coursecontext, $baseurl)->trim_if_empty();
 
         if ($adminoptions->update) {
             // Repository Instances
@@ -4945,8 +4962,8 @@ class settings_navigation extends navigation_node {
         // Let plugins hook into course navigation.
         $pluginsfunction = get_plugins_with_function('extend_navigation_course', 'lib.php');
         foreach ($pluginsfunction as $plugintype => $plugins) {
-            // Ignore the report plugin as it was already loaded above.
-            if ($plugintype == 'report') {
+            // Ignore the report and gradepenalty plugins as they were already loaded above.
+            if ($plugintype == 'report' || $plugintype == 'gradepenalty') {
                 continue;
             }
             foreach ($plugins as $pluginfunction) {
@@ -5899,7 +5916,8 @@ class settings_navigation extends navigation_node {
 
         // Questions
         require_once($CFG->libdir . '/questionlib.php');
-        question_extend_settings_navigation($frontpage, $coursecontext)->trim_if_empty();
+        $baseurl = \core_question\local\bank\question_bank_helper::get_url_for_qbank_list($course->id);
+        question_extend_settings_navigation($frontpage, $coursecontext, $baseurl)->trim_if_empty();
 
         // Manage files
         if ($adminoptions->files) {

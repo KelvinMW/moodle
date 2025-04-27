@@ -450,27 +450,15 @@ class core_text {
      * @return array with (html entity => utf-8) elements
      */
     protected static function get_entities_table() {
-        static $trans_tbl = null;
+        static $translationtable = null;
 
         // Generate/create $trans_tbl
-        if (!isset($trans_tbl)) {
-            if (version_compare(phpversion(), '5.3.4') < 0) {
-                $trans_tbl = array();
-                foreach (get_html_translation_table(HTML_ENTITIES, ENT_COMPAT) as $val=>$key) {
-                    $trans_tbl[$key] = self::convert($val, 'ISO-8859-1', 'utf-8');
-                }
-
-            } else if (version_compare(phpversion(), '5.4.0') < 0) {
-                $trans_tbl = get_html_translation_table(HTML_ENTITIES, ENT_COMPAT, 'UTF-8');
-                $trans_tbl = array_flip($trans_tbl);
-
-            } else {
-                $trans_tbl = get_html_translation_table(HTML_ENTITIES, ENT_COMPAT | ENT_HTML401, 'UTF-8');
-                $trans_tbl = array_flip($trans_tbl);
-            }
+        if (!isset($translationtable)) {
+            $translationtable = get_html_translation_table(HTML_ENTITIES, ENT_COMPAT | ENT_HTML401, 'UTF-8');
+            $translationtable = array_flip($translationtable);
         }
 
-        return $trans_tbl;
+        return $translationtable;
     }
 
     /**
@@ -679,5 +667,17 @@ class core_text {
         }
 
         return mb_convert_case($text, MB_CASE_TITLE, 'UTF-8');
+    }
+
+    /**
+     * Trims control characters out of a string.
+     * Example: (\x00-\x1f) and (\x7f)
+     *
+     * @param string $text Input string
+     * @return string Cleaned string value
+     */
+    public static function trim_ctrl_chars(string $text): string {
+        // Remove control characters text.
+        return preg_replace('/[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f]/i', '', $text);
     }
 }

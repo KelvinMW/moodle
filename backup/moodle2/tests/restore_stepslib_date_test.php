@@ -33,7 +33,7 @@ require_once($CFG->dirroot . '/mod/assign/tests/base_test.php');
  * @copyright  2017 Adrian Greeve <adrian@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class restore_stepslib_date_test extends \restore_date_testcase {
+final class restore_stepslib_date_test extends \restore_date_testcase {
 
     /**
      * Restoring a manual grade item does not result in the timecreated or
@@ -409,10 +409,11 @@ class restore_stepslib_date_test extends \restore_date_testcase {
 
         // Finish the attempt.
         $attemptobj = quiz_attempt::create($attempt->id);
-        $attemptobj->process_finish($timenow, false);
+        $attemptobj->process_submit($timenow, false);
+        $attemptobj->process_grade_submission($timenow);
 
         $questionattemptstepdates = [];
-        $originaliterator = $quba->get_attempt_iterator();
+        $originaliterator = $attemptobj->get_question_usage()->get_attempt_iterator();
         foreach ($originaliterator as $questionattempt) {
             $questionattemptstepdates[] = ['originaldate' => $questionattempt->get_last_action_time()];
         }

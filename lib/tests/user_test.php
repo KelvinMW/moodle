@@ -24,7 +24,7 @@ namespace core;
  * @copyright  2013 Rajesh Taneja <rajesh@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class user_test extends \advanced_testcase {
+final class user_test extends \advanced_testcase {
 
     /**
      * Setup test data.
@@ -877,6 +877,32 @@ class user_test extends \advanced_testcase {
     }
 
     /**
+     * Test retrieving dummy user fullname
+     *
+     * @covers \core_user::get_dummy_fullname
+     */
+    public function test_get_dummy_fullname(): void {
+        $context = \context_system::instance();
+
+        // Show real name as the force names config are not set.
+        $this->assertEquals('firstname lastname', \core_user::get_dummy_fullname($context));
+
+        // With override, still show real name.
+        $options = ['override' => true];
+        $this->assertEquals('firstname lastname', \core_user::get_dummy_fullname($context, $options));
+
+        // Set the alternative names config.
+        set_config('alternativefullnameformat', 'alternatename lastname firstname');
+
+        // Show default name format.
+        $this->assertEquals('firstname lastname', \core_user::get_dummy_fullname($context));
+
+        // With override, show alternative name format.
+        $options = ['override' => true];
+        $this->assertEquals('alternatename lastname firstname', \core_user::get_dummy_fullname($context, $options));
+    }
+
+    /**
      * Test for function to get user details.
      *
      * @covers \core_user::get_profile_url
@@ -977,33 +1003,33 @@ class user_test extends \advanced_testcase {
     public static function user_name_provider(): array {
         return [
             'simple user' => [
-                'user' => ['firstname' => 'first', 'lastname' => 'last'],
-                'fullnamedisplay' => 'language',
+                'userdata' => ['firstname' => 'first', 'lastname' => 'last'],
+                'fullnameconfig' => 'language',
                 'expected' => 'fl',
             ],
             'simple user with lastname firstname in language settings' => [
-                'user' => ['firstname' => 'first', 'lastname' => 'last'],
-                'fullnamedisplay' => 'lastname firstname',
+                'userdata' => ['firstname' => 'first', 'lastname' => 'last'],
+                'fullnameconfig' => 'lastname firstname',
                 'expected' => 'lf',
             ],
             'simple user with no surname' => [
-                'user' => ['firstname' => '', 'lastname' => 'L'],
-                'fullnamedisplay' => 'language',
+                'userdata' => ['firstname' => '', 'lastname' => 'L'],
+                'fullnameconfig' => 'language',
                 'expected' => 'L',
             ],
             'simple user with a middle name' => [
-                'user' => ['firstname' => 'f', 'lastname' => 'l', 'middlename' => 'm'],
-                'fullnamedisplay' => 'middlename lastname',
+                'userdata' => ['firstname' => 'f', 'lastname' => 'l', 'middlename' => 'm'],
+                'fullnameconfig' => 'middlename lastname',
                 'expected' => 'ml',
             ],
             'user with a middle name & fullnamedisplay contains 3 names' => [
-                'user' => ['firstname' => 'first', 'lastname' => 'last', 'middlename' => 'middle'],
-                'fullnamedisplay' => 'firstname middlename lastname',
+                'userdata' => ['firstname' => 'first', 'lastname' => 'last', 'middlename' => 'middle'],
+                'fullnameconfig' => 'firstname middlename lastname',
                 'expected' => 'fl',
             ],
             'simple user with a namefield consisting of one element' => [
-                'user' => ['firstname' => 'first', 'lastname' => 'last'],
-                'fullnamedisplay' => 'lastname',
+                'userdata' => ['firstname' => 'first', 'lastname' => 'last'],
+                'fullnameconfig' => 'lastname',
                 'expected' => 'l',
             ],
         ];

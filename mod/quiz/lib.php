@@ -25,7 +25,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-
+use core_question\local\bank\question_bank_helper;
 use qbank_managecategories\helper;
 
 defined('MOODLE_INTERNAL') || die();
@@ -254,7 +254,7 @@ function quiz_update_effective_access($quiz, $userid) {
 
     if (!empty($groupings[0])) {
         // Select all overrides that apply to the User's groups.
-        list($extra, $params) = $DB->get_in_or_equal(array_values($groupings[0]));
+        [$extra, $params] = $DB->get_in_or_equal(array_values($groupings[0]));
         $sql = "SELECT * FROM {quiz_overrides}
                 WHERE groupid $extra AND quiz = ?";
         $params[] = $quiz->id;
@@ -524,9 +524,10 @@ function quiz_get_user_attempts($quizids, $userid, $status = 'finished', $includ
             break;
 
         case 'finished':
-            $statuscondition = ' AND state IN (:state1, :state2)';
+            $statuscondition = ' AND state IN (:state1, :state2, :state3)';
             $params['state1'] = quiz_attempt::FINISHED;
             $params['state2'] = quiz_attempt::ABANDONED;
+            $params['state3'] = quiz_attempt::SUBMITTED;
             break;
 
         case 'unfinished':
@@ -537,7 +538,7 @@ function quiz_get_user_attempts($quizids, $userid, $status = 'finished', $includ
     }
 
     $quizids = (array) $quizids;
-    list($insql, $inparams) = $DB->get_in_or_equal($quizids, SQL_PARAMS_NAMED);
+    [$insql, $inparams] = $DB->get_in_or_equal($quizids, SQL_PARAMS_NAMED);
     $params += $inparams;
     $params['userid'] = $userid;
 
@@ -1581,7 +1582,7 @@ function quiz_num_attempt_summary($quiz, $cm, $returnzero = false, $currentgroup
                         [$quiz->id, $currentgroup]);
                 return get_string('attemptsnumthisgroup', 'quiz', $a);
             } else if ($groups = groups_get_all_groups($cm->course, $USER->id, $cm->groupingid)) {
-                list($usql, $params) = $DB->get_in_or_equal(array_keys($groups));
+                [$usql, $params] = $DB->get_in_or_equal(array_keys($groups));
                 $a->group = $DB->count_records_sql('SELECT COUNT(DISTINCT qa.id) FROM ' .
                         '{quiz_attempts} qa JOIN ' .
                         '{groups_members} gm ON qa.userid = gm.userid ' .
@@ -1873,7 +1874,7 @@ function quiz_check_updates_since(cm_info $cm, $from, $filter = []) {
     $quizobj->preload_questions();
     $questionids = array_keys($quizobj->get_questions(null, false));
     if (!empty($questionids)) {
-        list($questionsql, $params) = $DB->get_in_or_equal($questionids, SQL_PARAMS_NAMED);
+        [$questionsql, $params] = $DB->get_in_or_equal($questionids, SQL_PARAMS_NAMED);
         $select = 'id ' . $questionsql . ' AND (timemodified > :time1 OR timecreated > :time2)';
         $params['time1'] = $from;
         $params['time2'] = $from;
@@ -1911,7 +1912,7 @@ function quiz_check_updates_since(cm_info $cm, $from, $filter = []) {
             if (empty($groupusers)) {
                 return $updates;
             }
-            list($insql, $inparams) = $DB->get_in_or_equal($groupusers);
+            [$insql, $inparams] = $DB->get_in_or_equal($groupusers);
             $select .= ' AND userid ' . $insql;
             $params = array_merge($params, $inparams);
         }
@@ -2329,15 +2330,23 @@ function mod_quiz_output_fragment_quiz_question_bank($args): string {
     $querystring = parse_url($args['querystring'], PHP_URL_QUERY);
     parse_str($querystring, $params);
 
+    // Load the bank we are looking at rather than always the quiz module itself.
+    $params['cmid'] = clean_param($args['bankcmid'], PARAM_INT);
+
     $viewclass = \mod_quiz\question\bank\custom_view::class;
     $extraparams['view'] = $viewclass;
+
+    // We need the quiz modid to POST back to.
+    $extraparams['quizcmid'] = clean_param($args['quizcmid'], PARAM_INT);
 
     // Build required parameters.
     [$contexts, $thispageurl, $cm, $pagevars, $extraparams] =
             build_required_parameters_for_custom_view($params, $extraparams);
 
     $course = get_course($cm->course);
-    require_capability('mod/quiz:manage', $contexts->lowest());
+    if (!has_capability('moodle/question:useall', $contexts->lowest())) {
+        require_capability('moodle/question:usemine', $contexts->lowest());
+    }
 
     // Custom View.
     $questionbank = new $viewclass($contexts, $thispageurl, $course, $cm, $pagevars, $extraparams);
@@ -2348,14 +2357,30 @@ function mod_quiz_output_fragment_quiz_question_bank($args): string {
 }
 
 /**
+ * Build and return the output for the question bank and category chooser.
+ *
+ * @param array $args provided by the AJAX request.
+ * @return string html to render to the modal.
+ */
+function mod_quiz_output_fragment_switch_question_bank($args): string {
+    global $USER, $COURSE, $OUTPUT;
+
+    $quizcmid = clean_param($args['quizcmid'], PARAM_INT);
+
+    $switchbankwidget = new \core_question\output\switch_question_bank($quizcmid, $COURSE->id, $USER->id);
+
+    return $OUTPUT->render($switchbankwidget);
+}
+
+/**
  * Generates the add random question in a fragment output. This allows the
  * form to be rendered in javascript, for example inside a modal.
  *
  * The required arguments as keys in the $args array are:
- *      cat {string} The category and category context ids comma separated.
  *      addonpage {int} The page id to add this question to.
  *      returnurl {string} URL to return to after form submission.
- *      cmid {int} The course module id the questions are being added to.
+ *      quizcmid {int} The quiz course module id the questions are being added to.
+ *      bankcmid {int} The question bank course module id the questions are being added from.
  *
  * @param array $args The fragment arguments.
  * @return string The rendered mform fragment.
@@ -2364,6 +2389,8 @@ function mod_quiz_output_fragment_add_random_question_form($args) {
     global $PAGE, $OUTPUT;
 
     $extraparams = [];
+    $extraparams['quizcmid'] = clean_param($args['quizcmid'], PARAM_INT);
+    $extraparams['cmid'] = clean_param($args['bankcmid'], PARAM_INT);
 
     // Build required parameters.
     [$contexts, $thispageurl, $cm, $pagevars, $extraparams] =
@@ -2478,12 +2505,14 @@ function mod_quiz_output_fragment_question_data(array $args): string {
     $thispageurl = new \moodle_url('/mod/quiz/edit.php', ['cmid' => $cmid]);
     $thiscontext = \context_module::instance($cmid);
     $contexts = new \core_question\local\bank\question_edit_contexts($thiscontext);
-    $defaultcategory = question_make_default_categories($contexts->all());
+    $defaultcategory = question_get_default_category($contexts->lowest()->id, true);
     $params['cat'] = implode(',', [$defaultcategory->id, $defaultcategory->contextid]);
 
     $course = get_course($params['courseid']);
-    [, $cm] = get_module_from_cmid($cmid);
+    // The viewing bank mod id.
+    [, $cm] = get_module_from_cmid(clean_param($args['cmid'], PARAM_INT));
     $params['tabname'] = 'questions';
+    $extraparams['quizcmid'] = clean_param($args['quizcmid'], PARAM_INT);
 
     // Custom question bank View.
     $viewclass = clean_param($args['view'], PARAM_NOTAGS);
@@ -2516,6 +2545,8 @@ function build_required_parameters_for_custom_view(array $params, array $extrapa
 
     // Add cmid so we can retrieve later in extra params.
     $extraparams['cmid'] = $cmid;
+
+    $extraparams['requirebankswitch'] = !empty(question_bank_helper::get_activity_types_with_shareable_questions());
 
     return [$contexts, $thispageurl, $cm, $pagevars, $extraparams];
 }

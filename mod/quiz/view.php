@@ -23,6 +23,7 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use core\output\notification;
 use mod_quiz\access_manager;
 use mod_quiz\output\list_of_attempts;
 use mod_quiz\output\renderer;
@@ -68,6 +69,8 @@ quiz_view($quiz, $course, $cm, $context);
 
 // Initialize $PAGE, compute blocks.
 $PAGE->set_url('/mod/quiz/view.php', ['id' => $cm->id]);
+// On the quiz view page, the browser back/forwards buttons should force a reload.
+$PAGE->set_cacheable(false);
 
 // Create view object which collects all the information the renderer will need.
 $viewobj = new view_page();
@@ -135,7 +138,7 @@ $gradeitem = grade_item::fetch([
 ]);
 
 if ($gradeitem) {
-    if ($gradeitem->refresh_grades($USER->id)) {
+    if ($CFG->recovergradesdefault && $gradeitem->refresh_grades($USER->id)) {
         $grade = $gradeitem->get_grade($USER->id, false);
         if ($grade->overridden) {
             if ($gradeitem->needsupdate) {
@@ -259,6 +262,13 @@ if (!$viewobj->quizhasquestions) {
             }
         }
     }
+
+    // If the quiz has any invalid questions, we cannot attempt it.
+    if (in_array('missingtype', $quizobj->get_all_question_types_used())) {
+        $viewobj->preventmessages[] = $OUTPUT->notification(
+            get_string('quizinvalidquestions', 'mod_quiz'), notification::NOTIFY_ERROR, false);
+        $viewobj->buttontext = '';
+    }
 }
 
 $viewobj->showbacktocourse = ($viewobj->buttontext === '' &&
@@ -268,7 +278,7 @@ echo $OUTPUT->header();
 
 if (!empty($gradinginfo->errors)) {
     foreach ($gradinginfo->errors as $error) {
-        $errortext = new \core\output\notification($error, \core\output\notification::NOTIFY_ERROR);
+        $errortext = new notification($error, notification::NOTIFY_ERROR);
         echo $OUTPUT->render($errortext);
     }
 }

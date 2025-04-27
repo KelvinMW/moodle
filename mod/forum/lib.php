@@ -371,6 +371,8 @@ function forum_supports($feature) {
         case FEATURE_PLAGIARISM:              return true;
         case FEATURE_ADVANCED_GRADING:        return true;
         case FEATURE_MOD_PURPOSE:             return MOD_PURPOSE_COLLABORATION;
+        case FEATURE_CAN_UNINSTALL:
+            return false;
 
         default: return null;
     }
@@ -526,13 +528,6 @@ function forum_user_complete($course, $user, $mod, $forum) {
 }
 
 /**
- * @deprecated since Moodle 3.3, when the block_course_overview block was removed.
- */
-function forum_filter_user_groups_discussions() {
-    throw new coding_exception('forum_filter_user_groups_discussions() can not be used any more and is obsolete.');
-}
-
-/**
  * Returns whether the discussion group is visible by the current user or not.
  *
  * @since Moodle 2.8, 2.7.1, 2.6.4
@@ -556,13 +551,6 @@ function forum_is_user_group_discussion(cm_info $cm, $discussiongroupid) {
     }
 
     return false;
-}
-
-/**
- * @deprecated since Moodle 3.3, when the block_course_overview block was removed.
- */
-function forum_print_overview() {
-    throw new coding_exception('forum_print_overview() can not be used any more and is obsolete.');
 }
 
 /**
@@ -1702,6 +1690,9 @@ function forum_get_discussions($cm, $forumsort="", $fullpost=true, $unused=-1, $
     if (empty($forumsort)) {
         $forumsort = forum_get_default_sort_order();
     }
+    if (!str_contains($forumsort, 'id')) {
+        $forumsort .= ', d.id DESC';
+    }
     if (empty($fullpost)) {
         $postdata = "p.id, p.subject, p.modified, p.discussion, p.userid, p.created";
     } else {
@@ -1737,7 +1728,7 @@ function forum_get_discussions($cm, $forumsort="", $fullpost=true, $unused=-1, $
                    $umtable
              WHERE d.forum = ? AND p.parent = 0
                    $timelimit $groupselect $updatedsincesql
-          ORDER BY $forumsort, d.id DESC";
+          ORDER BY $forumsort";
 
     return $DB->get_records_sql($sql, $params, $limitfrom, $limitnum);
 }
@@ -2145,7 +2136,7 @@ function forum_get_course_forum($courseid, $type) {
         echo $OUTPUT->notification("Could not add a new course module to the course '" . $courseid . "'");
         return false;
     }
-    $sectionid = course_add_cm_to_section($courseid, $mod->coursemodule, 0);
+    $sectionid = course_add_cm_to_section($courseid, $mod->coursemodule, 0, null, 'forum');
     return $DB->get_record("forum", array("id" => "$forum->id"));
 }
 
@@ -4831,7 +4822,7 @@ function forum_discussion_update_last_post($discussionid) {
     $sql = "SELECT id, userid, modified
               FROM {forum_posts}
              WHERE discussion=?
-             ORDER BY modified DESC";
+             ORDER BY modified DESC, id DESC";
 
 // Lets go find the last post
     if (($lastposts = $DB->get_records_sql($sql, array($discussionid), 0, 1))) {
@@ -5927,7 +5918,7 @@ function forum_get_posts_by_user($user, array $courses, $musthaveaccess = false,
 
     // Prepare SQL to both count and search.
     // We alias user.id to useridx because we forum_posts already has a userid field and not aliasing this would break
-    // oracle and mssql.
+    // mssql.
     $userfieldsapi = \core_user\fields::for_userpic();
     $userfields = $userfieldsapi->get_sql('u', false, '', 'useridx', false)->selects;
     $countsql = 'SELECT COUNT(*) ';

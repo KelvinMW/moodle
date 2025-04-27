@@ -9,6 +9,7 @@
                 display: flex;
 
                 .icon {
+                    max-width: initial;
                     width: auto;
                     height: 1.3rem;
                 }
@@ -35,8 +36,10 @@
 
     .modal-body {
         .moodlenet-share-activity-info {
+            color: $body-color;
+            border-color: $primary-light-border;
+            @include gradient-bg($primary-light-background);
             @include border-radius();
-            @include alert-variant($primary-light-background, $primary-light-border, $body-color);
             border-width: 1px;
             border-style: solid;
             padding: 0.6em 1.5em;
@@ -85,7 +88,7 @@
                     &.status-icon {
                         .icon {
                             font-size: 8rem;
-                            width: auto;
+                            max-width: initial;
                             margin: 0;
                         }
                     }

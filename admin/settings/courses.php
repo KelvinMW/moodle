@@ -28,13 +28,22 @@ require_once($CFG->libdir . '/pdflib.php');
 
 use core_admin\local\settings\filesize;
 
-$capabilities = array(
+$ADMIN->add('courses', new admin_category('coursedefaultsettings', new lang_string('defaultsettingscategory', 'course')));
+$ADMIN->add('courses', new admin_category('groups', new lang_string('groups')));
+$ADMIN->add('courses', new admin_category('activitychooser', new lang_string('activitychoosercategory', 'course')));
+$ADMIN->add('courses', new admin_category('backups', new lang_string('backups', 'admin')));
+
+$capabilities = [
     'moodle/backup:backupcourse',
     'moodle/category:manage',
     'moodle/course:create',
     'moodle/site:approvecourse',
-    'moodle/restore:restorecourse'
-);
+    'moodle/restore:restorecourse',
+    'moodle/course:manageactivities',
+    'moodle/course:configurecustomfields',
+    'moodle/group:configurecustomfields',
+    'moodle/course:recommendactivity',
+];
 if ($hassiteconfig or has_any_capability($capabilities, $systemcontext)) {
     // Speedup for non-admins, add all caps used on this page.
     $ADMIN->add('courses',
@@ -104,7 +113,6 @@ if ($hassiteconfig or has_any_capability($capabilities, $systemcontext)) {
     }
 
     // Add a category for the course Default settings.
-    $ADMIN->add('courses', new admin_category('coursedefaultsettings', new lang_string('defaultsettingscategory', 'course')));
     // Course Default Settings Page.
     // NOTE: these settings must be applied after all other settings because they depend on them.
 
@@ -298,8 +306,7 @@ if ($hassiteconfig or has_any_capability($capabilities, $systemcontext)) {
         )
     );
 
-    // Add a category for the Groups.
-    $ADMIN->add('courses', new admin_category('groups', new lang_string('groups')));
+    // Add to the 'Groups' category.
     $ADMIN->add(
         'groups',
         new admin_externalpage(
@@ -319,8 +326,7 @@ if ($hassiteconfig or has_any_capability($capabilities, $systemcontext)) {
         )
     );
 
-    // Add a category for the Activity Chooser.
-    $ADMIN->add('courses', new admin_category('activitychooser', new lang_string('activitychoosercategory', 'course')));
+    // Add to the 'Activity Chooser' category.
     $temp = new admin_settingpage('activitychoosersettings', new lang_string('activitychoosersettings', 'course'));
     // Tab mode for the activity chooser.
     $temp->add(
@@ -372,8 +378,7 @@ if ($hassiteconfig or has_any_capability($capabilities, $systemcontext)) {
         )
     );
 
-    // Add a category for backups.
-    $ADMIN->add('courses', new admin_category('backups', new lang_string('backups','admin')));
+    // Add to the 'Backups' category.
 
     // Create a page for general backups configuration and defaults.
     $temp = new admin_settingpage('backupgeneralsettings', new lang_string('generalbackdefaults', 'backup'), 'moodle/backup:backupcourse');
@@ -415,11 +420,16 @@ if ($hassiteconfig or has_any_capability($capabilities, $systemcontext)) {
     $temp->add(new admin_setting_configcheckbox_with_lock('backup/backup_general_userscompletion', new lang_string('generaluserscompletion','backup'), new lang_string('configgeneraluserscompletion','backup'), array('value'=>1, 'locked'=>0)));
     $temp->add(new admin_setting_configcheckbox_with_lock('backup/backup_general_logs', new lang_string('generallogs','backup'), new lang_string('configgenerallogs','backup'), array('value'=>0, 'locked'=>0)));
     $temp->add(new admin_setting_configcheckbox_with_lock('backup/backup_general_histories', new lang_string('generalhistories','backup'), new lang_string('configgeneralhistories','backup'), array('value'=>0, 'locked'=>0)));
-    $temp->add(new admin_setting_configcheckbox_with_lock('backup/backup_general_questionbank', new lang_string('generalquestionbank','backup'), new lang_string('configgeneralquestionbank','backup'), array('value'=>1, 'locked'=>0)));
     $temp->add(new admin_setting_configcheckbox_with_lock('backup/backup_general_groups',
             new lang_string('generalgroups', 'backup'), new lang_string('configgeneralgroups', 'backup'),
             array('value' => 1, 'locked' => 0)));
     $temp->add(new admin_setting_configcheckbox_with_lock('backup/backup_general_competencies', new lang_string('generalcompetencies','backup'), new lang_string('configgeneralcompetencies','backup'), array('value'=>1, 'locked'=>0)));
+    $temp->add(new admin_setting_configcheckbox_with_lock(
+        'backup/backup_general_customfield',
+        new lang_string('generalcustomfield', 'backup'),
+        new lang_string('configgeneralcustomfield', 'backup'),
+        ['value' => 1, 'locked' => 0],
+    ));
     $temp->add(new admin_setting_configcheckbox_with_lock('backup/backup_general_contentbankcontent',
         new lang_string('generalcontentbankcontent', 'backup'),
         new lang_string('configgeneralcontentbankcontent', 'backup'),
@@ -430,7 +440,6 @@ if ($hassiteconfig or has_any_capability($capabilities, $systemcontext)) {
         new lang_string('configgeneralxapistate', 'backup'),
         ['value' => 1, 'locked' => 0])
     );
-
 
     $temp->add(new admin_setting_configcheckbox_with_lock('backup/backup_general_legacyfiles',
         new lang_string('generallegacyfiles', 'backup'),
@@ -454,12 +463,23 @@ if ($hassiteconfig or has_any_capability($capabilities, $systemcontext)) {
     $temp->add(new admin_setting_configcheckbox_with_lock('backup/backup_import_activities', new lang_string('generalactivities','backup'), new lang_string('configgeneralactivities','backup'), array('value'=>1, 'locked'=>0)));
     $temp->add(new admin_setting_configcheckbox_with_lock('backup/backup_import_blocks', new lang_string('generalblocks','backup'), new lang_string('configgeneralblocks','backup'), array('value'=>1, 'locked'=>0)));
     $temp->add(new admin_setting_configcheckbox_with_lock('backup/backup_import_filters', new lang_string('generalfilters','backup'), new lang_string('configgeneralfilters','backup'), array('value'=>1, 'locked'=>0)));
+    $temp->add(new admin_setting_configcheckbox_with_lock(
+        'backup/backup_import_badges',
+        new lang_string('generalbadges', 'backup'),
+        new lang_string('configgeneralbadges', 'backup'),
+        ['value' => 0, 'locked' => 0],
+    ));
     $temp->add(new admin_setting_configcheckbox_with_lock('backup/backup_import_calendarevents', new lang_string('generalcalendarevents','backup'), new lang_string('configgeneralcalendarevents','backup'), array('value'=>1, 'locked'=>0)));
-    $temp->add(new admin_setting_configcheckbox_with_lock('backup/backup_import_questionbank', new lang_string('generalquestionbank','backup'), new lang_string('configgeneralquestionbank','backup'), array('value'=>1, 'locked'=>0)));
     $temp->add(new admin_setting_configcheckbox_with_lock('backup/backup_import_groups',
             new lang_string('generalgroups', 'backup'), new lang_string('configgeneralgroups', 'backup'),
             array('value' => 1, 'locked' => 0)));
     $temp->add(new admin_setting_configcheckbox_with_lock('backup/backup_import_competencies', new lang_string('generalcompetencies','backup'), new lang_string('configgeneralcompetencies','backup'), array('value'=>1, 'locked'=>0)));
+    $temp->add(new admin_setting_configcheckbox_with_lock(
+        'backup/backup_import_customfield',
+        new lang_string('generalcustomfield', 'backup'),
+        new lang_string('configgeneralcustomfield', 'backup'),
+        ['value' => 1, 'locked' => 0],
+    ));
     $temp->add(new admin_setting_configcheckbox_with_lock(
         'backup/backup_import_contentbankcontent',
         new lang_string('generalcontentbankcontent', 'backup'),
@@ -585,10 +605,15 @@ if ($hassiteconfig or has_any_capability($capabilities, $systemcontext)) {
     $temp->add(new admin_setting_configcheckbox('backup/backup_auto_userscompletion', new lang_string('generaluserscompletion','backup'), new lang_string('configgeneraluserscompletion','backup'), 1));
     $temp->add(new admin_setting_configcheckbox('backup/backup_auto_logs', new lang_string('generallogs', 'backup'), new lang_string('configgenerallogs', 'backup'), 0));
     $temp->add(new admin_setting_configcheckbox('backup/backup_auto_histories', new lang_string('generalhistories','backup'), new lang_string('configgeneralhistories','backup'), 0));
-    $temp->add(new admin_setting_configcheckbox('backup/backup_auto_questionbank', new lang_string('generalquestionbank','backup'), new lang_string('configgeneralquestionbank','backup'), 1));
     $temp->add(new admin_setting_configcheckbox('backup/backup_auto_groups', new lang_string('generalgroups', 'backup'),
             new lang_string('configgeneralgroups', 'backup'), 1));
     $temp->add(new admin_setting_configcheckbox('backup/backup_auto_competencies', new lang_string('generalcompetencies','backup'), new lang_string('configgeneralcompetencies','backup'), 1));
+    $temp->add(new admin_setting_configcheckbox(
+        'backup/backup_auto_customfield',
+        new lang_string('generalcustomfield', 'backup'),
+        new lang_string('configgeneralcustomfield', 'backup'),
+        1,
+    ));
     $temp->add(new admin_setting_configcheckbox(
         'backup/backup_auto_contentbankcontent',
         new lang_string('generalcontentbankcontent', 'backup'),
@@ -668,6 +693,12 @@ if ($hassiteconfig or has_any_capability($capabilities, $systemcontext)) {
     $temp->add(new admin_setting_configcheckbox_with_lock('restore/restore_general_competencies',
         new lang_string('generalcompetencies', 'backup'),
         new lang_string('configrestorecompetencies', 'backup'), array('value' => 1, 'locked' => 0)));
+    $temp->add(new admin_setting_configcheckbox_with_lock(
+        'restore/restore_general_customfield',
+        new lang_string('generalcustomfield', 'backup'),
+        new lang_string('configrestorecustomfield', 'backup'),
+        ['value' => 1, 'locked' => 0],
+    ));
     $temp->add(new admin_setting_configcheckbox_with_lock('restore/restore_general_contentbankcontent',
         new lang_string('generalcontentbankcontent', 'backup'),
         new lang_string('configrestorecontentbankcontent', 'backup'), array('value' => 1, 'locked' => 0)));
