@@ -21,10 +21,10 @@ jobs:
           git config --global core.eol lf
 
       - name: Checking out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Configuring node & npm
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
 
@@ -59,7 +59,7 @@ jobs:
             db: pgsql
             extensions: exif, fileinfo, gd, intl, pgsql, mysql, redis, soap, sodium, zip
           - os: windows-latest
-            php: 8.2
+            php: 8.3
             db: pgsql
             extensions: exif, fileinfo, gd, intl, pgsql, mysql, redis, soap, sodium, zip
 
@@ -101,7 +101,7 @@ jobs:
           & $env:PGBIN\psql --username=test --host=localhost --list test
 
       - name: Configuring git vars
-        uses: rlespinasse/github-slug-action@v4
+        uses: rlespinasse/github-slug-action@v5
 
       - name: Setting up PHP ${{ matrix.php }}
         uses: shivammathur/setup-php@v2
@@ -117,7 +117,7 @@ jobs:
           git config --global core.eol lf
 
       - name: Checking out code from ${{ env.GITHUB_REF_SLUG }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # Needs to be done after php is available, git configured and Moodle checkout has happened.
       - name: Setting up moodle-exttests service
@@ -140,7 +140,7 @@ jobs:
           echo "pathtophp=$(which php)" >> $GITHUB_ENV # Inject installed pathtophp to env. The template config needs it.
           cp .github/workflows/config-template.php config.php
           mkdir ../moodledata
-          php admin/tool/phpunit/cli/init.php --no-composer-self-update
+          php public/admin/tool/phpunit/cli/init.php --no-composer-self-update
 
       - name: Running PHPUnit tests
         env:

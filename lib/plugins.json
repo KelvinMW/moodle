@@ -5,7 +5,10 @@
             "editor"
         ],
         "aiprovider": [
+            "awsbedrock",
             "azureai",
+            "deepseek",
+            "gemini",
             "ollama",
             "openai"
         ],
@@ -45,7 +48,6 @@
         ],
         "block": [
             "accessreview",
-            "activity_modules",
             "activity_results",
             "admin_bookmarks",
             "badges",
@@ -76,7 +78,6 @@
             "recentlyaccesseditems",
             "rss_client",
             "search_forums",
-            "section_links",
             "selfcompletion",
             "settings",
             "site_main_menu",
@@ -239,7 +240,7 @@
             "rubric"
         ],
         "h5plib": [
-            "v127"
+            "v128"
         ],
         "local": [],
         "logstore": [
@@ -373,7 +374,6 @@
             "multichoice",
             "numerical",
             "ordering",
-            "random",
             "randomsamatch",
             "shortanswer",
             "truefalse"
@@ -497,7 +497,6 @@
             "mfa",
             "mobile",
             "monitor",
-            "moodlenet",
             "multilangupgrade",
             "oauth2",
             "phpunit",
@@ -585,12 +584,14 @@
             "radius"
         ],
         "block": [
+            "activity_modules",
             "community",
             "course_overview",
             "messages",
             "mnet_hosts",
             "participants",
-            "quiz_results"
+            "quiz_results",
+            "section_links"
         ],
         "cachestore": [
             "memcache",
@@ -611,7 +612,8 @@
         ],
         "h5plib": [
             "v124",
-            "v126"
+            "v126",
+            "v127"
         ],
         "logstore": [
             "legacy"
@@ -640,6 +642,9 @@
             "examview",
             "learnwise",
             "webct"
+        ],
+        "qtype": [
+            "random"
         ],
         "quizaccess": [
             "safebrowser"
@@ -697,6 +702,7 @@
             "bloglevelupgrade",
             "health",
             "innodb",
+            "moodlenet",
             "qeupgradehelper",
             "timezoneimport"
         ],
