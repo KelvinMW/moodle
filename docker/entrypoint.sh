@@ -99,6 +99,15 @@ else
 fi
 set -e
 
-# 6. Serve
+# 6. Ensure exactly one Apache MPM at runtime (mod_php needs prefork).
+#    Done here too — image build state can vary or be cached; the entrypoint
+#    always runs, so this is the authoritative guarantee.
+rm -f /etc/apache2/mods-enabled/mpm_*.load /etc/apache2/mods-enabled/mpm_*.conf
+ln -sf /etc/apache2/mods-available/mpm_prefork.load /etc/apache2/mods-enabled/mpm_prefork.load
+echo "[entrypoint] MPM symlinks enabled: $(ls /etc/apache2/mods-enabled/ | grep -i mpm | tr '\n' ' ')"
+echo "[entrypoint] LoadModule mpm across all apache configs:"
+grep -rIl 'LoadModule mpm_' /etc/apache2/ 2>/dev/null || echo "  (only via mods-enabled)"
+
+# 7. Serve
 echo "[entrypoint] starting Apache on port ${PORT}"
 exec apache2-foreground

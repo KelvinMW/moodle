@@ -22,8 +22,9 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 # Force exactly one MPM (mod_php requires prefork). a2enmod won't switch MPMs
 # when another is enabled, so link the symlink directly to guarantee a single MPM.
 RUN rm -f /etc/apache2/mods-enabled/mpm_*.load /etc/apache2/mods-enabled/mpm_*.conf \
-    && ln -s /etc/apache2/mods-available/mpm_prefork.load /etc/apache2/mods-enabled/mpm_prefork.load \
-    && a2enmod rewrite headers expires deflate
+    && ln -sf /etc/apache2/mods-available/mpm_prefork.load /etc/apache2/mods-enabled/mpm_prefork.load \
+    && a2enmod rewrite headers expires deflate \
+    && echo "MPM after build:" && ls /etc/apache2/mods-enabled/ | grep -i mpm
 
 # PHP runtime tuning for Moodle
 COPY docker/php.ini /usr/local/etc/php/conf.d/zz-moodle.ini
