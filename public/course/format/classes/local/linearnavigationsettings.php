@@ -84,7 +84,7 @@ class linearnavigationsettings {
                         1 => new lang_string('yes'),
                     ],
                 ],
-                'help' => 'linearnavigationsettings',
+                'inline_help' => 'linearnavigationsettings',
                 'help_component' => $helpcomponent,
             ],
         ];
@@ -118,5 +118,53 @@ class linearnavigationsettings {
                 self::get_default_linear_navigation_value($courseformat->get_format())
             );
         }
+    }
+
+    /**
+     * Check if the navigation footer should be shown on the page.
+     *
+     * @param \moodle_page $page
+     * @return bool if the navigation footer should be shown
+     */
+    public static function show_navigation_footer(\moodle_page $page): bool {
+        if ($page->cm === null) {
+            // Not on an activity page, do not add the sticky footer.
+            return false;
+        }
+        if ($page->has_sticky_footer()) {
+            // If there is already a sticky footer, do not add another one.
+            return false;
+        }
+        if (!$page->should_show_navigation_footer()) {
+            // If the page should not show the navigation footer, do not add the sticky footer.
+            return false;
+        }
+
+        if (!self::is_linear_navigation_enabled($page->course)) {
+            // Only add the navigation footer when linear navigation is enabled.
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Check if linear navigation is enabled for the course.
+     *
+     * This only checks the course format and the linear navigation format option, regardless of any
+     * page-level state. It is useful for activities that need to adapt their output (for example,
+     * hiding navigation controls of their own) when linear navigation is enabled.
+     *
+     * @param int|\stdClass $course The course record or course ID.
+     * @return bool true if linear navigation is enabled for the course.
+     */
+    public static function is_linear_navigation_enabled(int|\stdClass $course): bool {
+        $format = \course_get_format($course);
+        if (!$format->uses_linear_navigation()) {
+            // The course format does not support linear navigation.
+            return false;
+        }
+        $formatoptions = $format->get_format_options();
+        return (bool) ($formatoptions[self::SETTING_ENABLE_LINEAR_NAV] ?? false);
     }
 }

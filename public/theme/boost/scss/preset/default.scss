@@ -6,6 +6,21 @@
 // Must be imported before Bootstrap so that the design system tokens can be used to override Bootstrap variables.
 @import "design-system";
 
+// Typography
+$font-family-sans-serif: $mds-font-family-base,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    "Liberation Sans",
+    Arial,
+    sans-serif,
+    "Apple Color Emoji",
+    "Segoe UI Emoji",
+    "Segoe UI Symbol",
+    "Noto Color Emoji" !default;
+
 // Prefix for all CSS variables
 $prefix: bs- !default;
 
@@ -81,6 +96,7 @@ $card-group-margin: .25rem;
 $focus-ring-opacity: .75 !default;
 $input-border-color: var(--#{$prefix}gray-500) !default;
 $form-check-input-border: var(--#{$prefix}border-width) solid var(--#{$prefix}gray-500) !default;
+$form-switch-color: rgba($black, .45) !default;
 
 // Dropdowns
 $dropdown-link-hover-color: $white;
@@ -105,6 +121,9 @@ $spacers: (
 $behatsite: false !default;
 $enable-transitions: not $behatsite !default;
 $enable-smooth-scroll: not $behatsite !default;
+
+// Import Noto Sans font face declarations.
+@import "moodle/fonts";
 
 // Import FontAwesome.
 @import "fontawesome";

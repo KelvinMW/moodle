@@ -1,5 +1,5 @@
 <?php
-// This file is part of Moodle - http://moodle.org/
+// This file is part of Moodle - https://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace core_admin\reportbuilder\local\entities;
 
@@ -35,10 +35,9 @@ use core_collator;
  *
  * @package    core_admin
  * @copyright  2021 David Matamoros <davidmc@moodle.com>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class task_log extends base {
-
     /** @var int Result success */
     protected const SUCCESS = 0;
 
@@ -102,7 +101,6 @@ class task_log extends base {
             new lang_string('name'),
             $this->get_entity_name()
         ))
-            ->add_joins($this->get_joins())
             ->set_type(column::TYPE_TEXT)
             ->add_field("{$tablealias}.classname")
             ->set_is_sortable(true)
@@ -114,7 +112,6 @@ class task_log extends base {
             new lang_string('plugin'),
             $this->get_entity_name()
         ))
-            ->add_joins($this->get_joins())
             ->set_type(column::TYPE_TEXT)
             ->add_field("{$tablealias}.component")
             ->set_is_sortable(true);
@@ -125,11 +122,10 @@ class task_log extends base {
             new lang_string('tasktype', 'admin'),
             $this->get_entity_name()
         ))
-            ->add_joins($this->get_joins())
             ->set_type(column::TYPE_TEXT)
             ->add_field("{$tablealias}.type")
             ->set_is_sortable(true)
-            ->add_callback(static function($value): string {
+            ->add_callback(static function ($value): string {
                 if (\core\task\database_logger::TYPE_SCHEDULED === (int) $value) {
                     return get_string('task_type:scheduled', 'admin');
                 }
@@ -142,7 +138,6 @@ class task_log extends base {
             new lang_string('task_starttime', 'admin'),
             $this->get_entity_name()
         ))
-            ->add_joins($this->get_joins())
             ->set_type(column::TYPE_TIMESTAMP)
             ->add_field("{$tablealias}.timestart")
             ->set_is_sortable(true)
@@ -154,7 +149,6 @@ class task_log extends base {
             new lang_string('task_endtime', 'admin'),
             $this->get_entity_name()
         ))
-            ->add_joins($this->get_joins())
             ->set_type(column::TYPE_TIMESTAMP)
             ->add_field("{$tablealias}.timeend")
             ->set_is_sortable(true)
@@ -166,7 +160,6 @@ class task_log extends base {
             new lang_string('task_duration', 'admin'),
             $this->get_entity_name()
         ))
-            ->add_joins($this->get_joins())
             ->set_type(column::TYPE_FLOAT)
             ->add_field("{$tablealias}.timeend - {$tablealias}.timestart", 'duration')
             ->set_is_sortable(true)
@@ -178,7 +171,6 @@ class task_log extends base {
             new lang_string('hostname', 'admin'),
             $this->get_entity_name()
         ))
-            ->add_joins($this->get_joins())
             ->set_type(column::TYPE_TEXT)
             ->add_field("$tablealias.hostname")
             ->set_is_sortable(true);
@@ -189,7 +181,6 @@ class task_log extends base {
             new lang_string('pid', 'admin'),
             $this->get_entity_name()
         ))
-            ->add_joins($this->get_joins())
             ->add_field("{$tablealias}.pid")
             ->set_is_sortable(true);
 
@@ -199,10 +190,9 @@ class task_log extends base {
             new lang_string('task_dbstats', 'admin'),
             $this->get_entity_name()
         ))
-            ->add_joins($this->get_joins())
             ->add_fields("{$tablealias}.dbreads, {$tablealias}.dbwrites")
             ->set_is_sortable(true, ["{$tablealias}.dbreads", "{$tablealias}.dbwrites"])
-            ->add_callback(static function($value, stdClass $row): string {
+            ->add_callback(static function ($value, stdClass $row): string {
                 $output = '';
                 $output .= \html_writer::div(get_string('task_stats:dbreads', 'admin', $row->dbreads));
                 $output .= \html_writer::div(get_string('task_stats:dbwrites', 'admin', $row->dbwrites));
@@ -215,7 +205,6 @@ class task_log extends base {
             new lang_string('task_dbreads', 'admin'),
             $this->get_entity_name()
         ))
-            ->add_joins($this->get_joins())
             ->set_type(column::TYPE_INTEGER)
             ->add_fields("{$tablealias}.dbreads")
             ->set_is_sortable(true);
@@ -226,7 +215,6 @@ class task_log extends base {
             new lang_string('task_dbwrites', 'admin'),
             $this->get_entity_name()
         ))
-            ->add_joins($this->get_joins())
             ->set_type(column::TYPE_INTEGER)
             ->add_fields("{$tablealias}.dbwrites")
             ->set_is_sortable(true);
@@ -237,12 +225,11 @@ class task_log extends base {
             new lang_string('task_result', 'admin'),
             $this->get_entity_name()
         ))
-            ->add_joins($this->get_joins())
             ->set_type(column::TYPE_BOOLEAN)
             // For accurate aggregation, we need to return boolean success = true by xor'ing the field value.
             ->add_field($DB->sql_bitxor("{$tablealias}.result", 1), 'success')
             ->set_is_sortable(true)
-            ->add_callback(static function(bool $success): string {
+            ->add_callback(static function (bool $success): string {
                 if (!$success) {
                     return get_string('task_result:failed', 'admin');
                 }
@@ -268,8 +255,7 @@ class task_log extends base {
             $this->get_entity_name(),
             "{$tablealias}.classname"
         ))
-            ->add_joins($this->get_joins())
-            ->set_options_callback(static function(): array {
+            ->set_options_callback(static function (): array {
                 global $DB;
                 $classnames = $DB->get_fieldset_sql('SELECT DISTINCT classname FROM {task_log} ORDER BY classname ASC');
 
@@ -290,8 +276,7 @@ class task_log extends base {
             new lang_string('plugin'),
             $this->get_entity_name(),
             "{$tablealias}.component"
-        ))
-            ->add_joins($this->get_joins());
+        ));
 
         // Type filter.
         $filters[] = (new filter(
@@ -301,7 +286,6 @@ class task_log extends base {
             $this->get_entity_name(),
             "{$tablealias}.type"
         ))
-            ->add_joins($this->get_joins())
             ->set_options([
                 \core\task\database_logger::TYPE_ADHOC => new lang_string('task_type:adhoc', 'admin'),
                 \core\task\database_logger::TYPE_SCHEDULED => new lang_string('task_type:scheduled', 'admin'),
@@ -314,8 +298,7 @@ class task_log extends base {
             new lang_string('task_logoutput', 'admin'),
             $this->get_entity_name(),
             "{$tablealias}.output"
-        ))
-            ->add_joins($this->get_joins());
+        ));
 
         // Start time filter.
         $filters[] = (new filter(
@@ -325,7 +308,6 @@ class task_log extends base {
             $this->get_entity_name(),
             "{$tablealias}.timestart"
         ))
-            ->add_joins($this->get_joins())
             ->set_limited_operators([
                 date::DATE_ANY,
                 date::DATE_RANGE,
@@ -341,7 +323,6 @@ class task_log extends base {
             $this->get_entity_name(),
             "{$tablealias}.timeend"
         ))
-            ->add_joins($this->get_joins())
             ->set_limited_operators([
                 date::DATE_ANY,
                 date::DATE_RANGE,
@@ -356,8 +337,7 @@ class task_log extends base {
             new lang_string('task_duration', 'admin'),
             $this->get_entity_name(),
             "{$tablealias}.timeend - {$tablealias}.timestart"
-        ))
-            ->add_joins($this->get_joins());
+        ));
 
         // Database reads.
         $filters[] = (new filter(
@@ -366,8 +346,7 @@ class task_log extends base {
             new lang_string('task_dbreads', 'admin'),
             $this->get_entity_name(),
             "{$tablealias}.dbreads"
-        ))
-            ->add_joins($this->get_joins());
+        ));
 
         // Database writes.
         $filters[] = (new filter(
@@ -376,8 +355,7 @@ class task_log extends base {
             new lang_string('task_dbwrites', 'admin'),
             $this->get_entity_name(),
             "{$tablealias}.dbwrites"
-        ))
-            ->add_joins($this->get_joins());
+        ));
 
         // Result filter.
         $filters[] = (new filter(
@@ -387,7 +365,6 @@ class task_log extends base {
             $this->get_entity_name(),
             "{$tablealias}.result"
         ))
-            ->add_joins($this->get_joins())
             ->set_options([
                 self::SUCCESS => get_string('success'),
                 self::FAILED => get_string('task_result:failed', 'admin'),
