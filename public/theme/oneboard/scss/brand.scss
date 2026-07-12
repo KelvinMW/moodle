@@ -1,0 +1,67 @@
+// OneBoard brand layer — compiled after the Boost/Bootstrap base.
+// Palette variables ($primary, $oneboard-*) come from theme_oneboard_get_pre_scss().
+
+// ---------------------------------------------------------------------------
+// Typography — Inter (imported at the top of the compiled CSS in lib.php).
+// ---------------------------------------------------------------------------
+body,
+.h1, .h2, .h3, .h4, .h5, .h6,
+h1, h2, h3, h4, h5, h6,
+.btn,
+input, select, textarea {
+    font-family: 'Inter', Arial, Helvetica, sans-serif;
+}
+
+h1, .h1, h2, .h2 { font-weight: 700; }
+h3, .h3, h4, .h4 { font-weight: 600; }
+
+// ---------------------------------------------------------------------------
+// Brand accents.
+// ---------------------------------------------------------------------------
+.btn-primary {
+    --bs-btn-hover-bg: #{$oneboard-dark};
+    --bs-btn-hover-border-color: #{$oneboard-dark};
+    --bs-btn-active-bg: #{$oneboard-dark};
+}
+
+a:hover { color: $oneboard-dark; }
+
+.progress-bar { background-color: $primary; }
+
+.badge.bg-primary,
+.badge.badge-primary { background-color: $primary !important; }
+
+// Muted highlight blocks use the brand tint.
+.bg-light-primary,
+.card .card-header.bg-primary-subtle { background-color: $oneboard-tint; }
+
+// ---------------------------------------------------------------------------
+// Login page — dark OneBoard hero with the lockup.
+// ---------------------------------------------------------------------------
+body.pagelayout-login {
+    background-color: $oneboard-darkbg;
+
+    #page,
+    #page-wrapper { background: $oneboard-darkbg; }
+
+    .card {
+        border: 0;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+    }
+
+    // OneBoard lockup above the sign-in card.
+    #region-main::before {
+        content: "";
+        display: block;
+        height: 72px;
+        margin: 0 auto 1.5rem;
+        background-image: url('[[pix:theme|oneboard-lockup-dark]]');
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: contain;
+    }
+
+    // On the dark hero, secondary text uses the Mid/Light stops (per brand rules).
+    a { color: $oneboard-light; }
+    a:hover { color: #fff; }
+}

@@ -33,6 +33,9 @@ $CFG->dataroot = getenv('MOODLE_DATAROOT') ?: '/var/moodledata';
 $CFG->admin    = 'admin';
 $CFG->directorypermissions = 02777;
 
+// OneBoard brand theme (Boost child, ships in the image).
+$CFG->theme = getenv('MOODLE_THEME') ?: 'oneboard';
+
 // Railway terminates TLS at its edge proxy.
 $CFG->sslproxy = !empty($railwaydomain) || getenv('MOODLE_SSLPROXY') === 'true';
 

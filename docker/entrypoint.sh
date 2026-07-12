@@ -47,8 +47,13 @@ chown www-data:www-data "$APP/config.php"
 cat > /etc/apache2/ports.conf <<EOF
 Listen ${PORT}
 EOF
+# Derive a ServerName from the site URL to silence the AH00558 warning.
+SERVERNAME="$(echo "${MOODLE_WWWROOT:-http://localhost}" | sed -E 's#^https?://##; s#/.*##')"
+grep -q '^ServerName ' /etc/apache2/apache2.conf || echo "ServerName ${SERVERNAME}" >> /etc/apache2/apache2.conf
+
 cat > /etc/apache2/sites-available/000-default.conf <<EOF
 <VirtualHost *:${PORT}>
+    ServerName ${SERVERNAME}
     DocumentRoot ${APP}/public
     <Directory ${APP}/public>
         Options FollowSymLinks
@@ -93,8 +98,12 @@ else
             --shortname='${MOODLE_SITE_SHORTNAME:-OneBoard}' \
             --agree-license"
         rc=$?
-        [ $rc -eq 0 ] && echo "[entrypoint] install complete" \
-            || echo "[entrypoint] WARNING: install exited $rc — starting Apache anyway (check DB/Redis vars)"
+        if [ $rc -eq 0 ]; then
+            echo "[entrypoint] install complete"
+            run_as_www "php admin/cli/purge_caches.php"
+        else
+            echo "[entrypoint] WARNING: install exited $rc — starting Apache anyway (check DB/Redis vars)"
+        fi
     fi
 fi
 set -e
