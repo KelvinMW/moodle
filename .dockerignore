@@ -1,0 +1,7 @@
+.git
+.github
+node_modules
+moodledata
+/config.php
+*.log
+.DS_Store
