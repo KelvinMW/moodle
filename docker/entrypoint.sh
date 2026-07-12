@@ -51,6 +51,20 @@ EOF
 SERVERNAME="$(echo "${MOODLE_WWWROOT:-http://localhost}" | sed -E 's#^https?://##; s#/.*##')"
 grep -q '^ServerName ' /etc/apache2/apache2.conf || echo "ServerName ${SERVERNAME}" >> /etc/apache2/apache2.conf
 
+# CORS so the OneBoard app in a browser/PWA can read web-service responses.
+# Token-authenticated (no cookies), so a wildcard origin is safe here.
+# Disable with MOODLE_ALLOW_CORS=false.
+CORS_CONF=""
+if [ "${MOODLE_ALLOW_CORS:-true}" != "false" ]; then
+    CORS_CONF='
+    Header always set Access-Control-Allow-Origin "*"
+    Header always set Access-Control-Allow-Methods "GET, POST, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+    RewriteEngine On
+    RewriteCond %{REQUEST_METHOD} =OPTIONS
+    RewriteRule ^ - [R=204,L]'
+fi
+
 cat > /etc/apache2/sites-available/000-default.conf <<EOF
 <VirtualHost *:${PORT}>
     ServerName ${SERVERNAME}
@@ -59,7 +73,7 @@ cat > /etc/apache2/sites-available/000-default.conf <<EOF
         Options FollowSymLinks
         AllowOverride All
         Require all granted
-    </Directory>
+    </Directory>${CORS_CONF}
     ErrorLog \${APACHE_LOG_DIR}/error.log
     CustomLog \${APACHE_LOG_DIR}/access.log combined
 </VirtualHost>
