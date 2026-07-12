@@ -47,24 +47,34 @@ for i in $(seq 1 30); do
     echo "  ...retry $i/30"; sleep 2
 done
 
-# 5. Install schema on first boot, otherwise run pending upgrades
+# 5. Install schema on first boot, otherwise run pending upgrades.
+#    Non-fatal: if this fails we still start Apache so the error is visible
+#    in the browser / logs instead of crashlooping the container.
 cd "$APP"
+set +e
 if run_as_www "php admin/cli/cfg.php --name=version" >/dev/null 2>&1; then
     echo "[entrypoint] existing install detected — running upgrade"
-    run_as_www "php admin/cli/upgrade.php --non-interactive" || true
-    run_as_www "php admin/cli/purge_caches.php" || true
+    run_as_www "php admin/cli/upgrade.php --non-interactive"
+    run_as_www "php admin/cli/purge_caches.php"
 else
     echo "[entrypoint] fresh database — installing Moodle"
-    : "${MOODLE_ADMIN_PASS:?set MOODLE_ADMIN_PASS in Railway before first deploy}"
-    run_as_www "php admin/cli/install_database.php \
-        --lang='${MOODLE_LANG:-en}' \
-        --adminuser='${MOODLE_ADMIN_USER:-admin}' \
-        --adminpass='${MOODLE_ADMIN_PASS}' \
-        --adminemail='${MOODLE_ADMIN_EMAIL:-admin@example.com}' \
-        --fullname='${MOODLE_SITE_FULLNAME:-OneBoard}' \
-        --shortname='${MOODLE_SITE_SHORTNAME:-OneBoard}' \
-        --agree-license --non-interactive"
+    if [ -z "${MOODLE_ADMIN_PASS:-}" ]; then
+        echo "[entrypoint] WARNING: MOODLE_ADMIN_PASS not set — skipping install"
+    else
+        run_as_www "php admin/cli/install_database.php \
+            --lang='${MOODLE_LANG:-en}' \
+            --adminuser='${MOODLE_ADMIN_USER:-admin}' \
+            --adminpass='${MOODLE_ADMIN_PASS}' \
+            --adminemail='${MOODLE_ADMIN_EMAIL:-admin@example.com}' \
+            --fullname='${MOODLE_SITE_FULLNAME:-OneBoard}' \
+            --shortname='${MOODLE_SITE_SHORTNAME:-OneBoard}' \
+            --agree-license --non-interactive"
+        rc=$?
+        [ $rc -eq 0 ] && echo "[entrypoint] install complete" \
+            || echo "[entrypoint] WARNING: install exited $rc — starting Apache anyway (check DB/Redis vars)"
+    fi
 fi
+set -e
 
 # 6. Serve
 echo "[entrypoint] starting Apache on port ${PORT}"
