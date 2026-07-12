@@ -14,19 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+namespace theme_oneboard\output;
+
 /**
- * OneBoard theme version information.
+ * OneBoard renderer.
+ *
+ * OneBoard inherits Boost's layouts (drawers), which call Boost renderer methods
+ * such as firstview_fakeblocks(); extend Boost's core_renderer so they resolve.
  *
  * @package    theme_oneboard
  * @copyright  2026 oneboard.study
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
-defined('MOODLE_INTERNAL') || die();
-
-$plugin->version   = 2026071201;
-$plugin->requires  = 2026041000;
-$plugin->component = 'theme_oneboard';
-$plugin->dependencies = [
-    'theme_boost' => 2026041000,
-];
+class core_renderer extends \theme_boost\output\core_renderer {
+}
