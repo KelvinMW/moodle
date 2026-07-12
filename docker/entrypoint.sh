@@ -88,9 +88,10 @@ else
             --adminuser='${MOODLE_ADMIN_USER:-admin}' \
             --adminpass='${MOODLE_ADMIN_PASS}' \
             --adminemail='${MOODLE_ADMIN_EMAIL:-admin@example.com}' \
+            --supportemail='${MOODLE_ADMIN_EMAIL:-admin@example.com}' \
             --fullname='${MOODLE_SITE_FULLNAME:-OneBoard}' \
             --shortname='${MOODLE_SITE_SHORTNAME:-OneBoard}' \
-            --agree-license --non-interactive"
+            --agree-license"
         rc=$?
         [ $rc -eq 0 ] && echo "[entrypoint] install complete" \
             || echo "[entrypoint] WARNING: install exited $rc — starting Apache anyway (check DB/Redis vars)"
