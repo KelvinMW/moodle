@@ -15,7 +15,7 @@ echo "[entrypoint] preparing OneBoard Moodle..."
 # 0. Derive discrete DB/Redis vars from Railway connection URLs when the
 #    individual PG*/REDIS* vars are not set. Exported here so both the CLI
 #    install below and the Apache/PHP process (via exec) see them.
-if [ -z "${PGHOST:-}" ] && [ -n "${DATABASE_URL:-}" ]; then
+if [ -n "${DATABASE_URL:-}" ]; then
     _u="${DATABASE_URL#*://}"; _cred="${_u%%@*}"; _hp="${_u#*@}"
     export PGUSER="${_cred%%:*}"
     export PGPASSWORD="${_cred#*:}"
@@ -26,7 +26,7 @@ if [ -z "${PGHOST:-}" ] && [ -n "${DATABASE_URL:-}" ]; then
     export PGPORT="$_port"
     echo "[entrypoint] parsed DATABASE_URL -> host=$PGHOST db=$PGDATABASE user=$PGUSER"
 fi
-if [ -z "${REDISHOST:-}" ] && [ -n "${REDIS_URL:-}" ]; then
+if [ -n "${REDIS_URL:-}" ]; then
     _u="${REDIS_URL#*://}"; _cred="${_u%%@*}"; _hp="${_u#*@}"
     export REDISPASSWORD="${_cred#*:}"
     export REDISHOST="${_hp%%:*}"
