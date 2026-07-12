@@ -41,9 +41,21 @@ a:hover { color: $oneboard-dark; }
 // ---------------------------------------------------------------------------
 body.pagelayout-login {
     background-color: $oneboard-darkbg;
+    color: $oneboard-tint;
 
     #page,
     #page-wrapper { background: $oneboard-darkbg; }
+
+    // Legible light text on the dark hero.
+    h1, h2, h3, .h1, .h2, .h3,
+    label, .form-label, legend {
+        color: $oneboard-tint;
+    }
+    p, .small, small,
+    .text-muted, .text-body-secondary,
+    .login-subheading, .logindesc {
+        color: $oneboard-light !important;
+    }
 
     .card {
         border: 0;
