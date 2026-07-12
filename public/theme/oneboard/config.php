@@ -31,6 +31,10 @@ $THEME->sheets = [];
 $THEME->editor_sheets = [];
 $THEME->enable_dock = false;
 
+// Required so renderer overrides (theme_oneboard / theme_boost, e.g.
+// firstview_fakeblocks used by Boost's drawers layout) are resolved.
+$THEME->rendererfactory = 'theme_overridden_renderer_factory';
+
 // Inherit Boost's page layouts.
 $THEME->doctype = 'html5';
 

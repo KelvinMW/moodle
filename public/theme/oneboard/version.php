@@ -24,7 +24,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2026071201;
+$plugin->version   = 2026071202;
 $plugin->requires  = 2026041000;
 $plugin->component = 'theme_oneboard';
 $plugin->dependencies = [
