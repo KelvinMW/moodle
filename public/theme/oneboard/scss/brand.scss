@@ -1,8 +1,9 @@
-// OneBoard brand layer — compiled after the Boost/Bootstrap base.
+// OneBoard brand layer — appended as extra SCSS, compiled with the Boost base.
 // Palette variables ($primary, $oneboard-*) come from theme_oneboard_get_pre_scss().
 
 // ---------------------------------------------------------------------------
-// Typography — Inter (imported at the top of the compiled CSS in lib.php).
+// Typography — Inter where available, Arial/system fallback otherwise.
+// (Bundled Inter web font to be added in a follow-up.)
 // ---------------------------------------------------------------------------
 body,
 .h1, .h2, .h3, .h4, .h5, .h6,
