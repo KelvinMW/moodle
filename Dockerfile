@@ -18,8 +18,10 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && pecl install redis \
     && docker-php-ext-enable redis
 
-# Apache modules Moodle needs (clean URLs, caching headers)
-RUN a2enmod rewrite headers expires deflate
+# Apache modules Moodle needs (clean URLs, caching headers).
+# Force a single MPM (mod_php requires prefork) to avoid "More than one MPM loaded".
+RUN a2dismod mpm_event mpm_worker 2>/dev/null || true; \
+    a2enmod mpm_prefork rewrite headers expires deflate
 
 # PHP runtime tuning for Moodle
 COPY docker/php.ini /usr/local/etc/php/conf.d/zz-moodle.ini
