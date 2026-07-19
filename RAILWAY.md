@@ -45,6 +45,7 @@ REDISPASSWORD=${{Redis.REDISPASSWORD}}
 | `MOODLE_DATAROOT` | no | `/var/moodledata` | must match the Volume mount |
 | `MOODLE_DB_PREFIX` | no | `mdl_` | |
 | `MOODLE_LANG` | no | `en` | |
+| `MOODLE_THEME` | no | `boost` | `boost` (stock), `boost_union`, or `oneboard` |
 | `MOODLE_DEBUG` | no | — | `true` to show errors |
 
 > **Set `MOODLE_WWWROOT` to your final public URL before first install** — Moodle bakes the
@@ -70,3 +71,16 @@ php admin/cli/cron.php
 ```
 
 every minute.
+
+## 6. Themes
+
+The default theme is stock Moodle **Boost** (`MOODLE_THEME=boost`).
+
+**`theme_boost_union`** (branch `MOODLE_502_STABLE`) is baked into the image at build
+(`public/theme/boost_union`) so it survives redeploys — Railway's filesystem is ephemeral,
+so themes uploaded via the web installer are lost on the next deploy. Its capabilities are
+registered by `upgrade.php` on boot. Select it in **Site admin → Appearance → Themes → Theme
+selector**, or set `MOODLE_THEME=boost_union`.
+
+To bake in another plugin, add a `git clone --branch MOODLE_502_STABLE …` line in the
+`Dockerfile` next to the boost_union clone; do **not** install plugins through the web UI.

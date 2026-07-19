@@ -33,6 +33,15 @@ COPY docker/php.ini /usr/local/etc/php/conf.d/zz-moodle.ini
 WORKDIR /var/www/html
 COPY . /var/www/html
 
+# Bundle theme_boost_union (Moodle 5.2 branch) into the image so it persists
+# across Railway redeploys. Web-uploaded plugins live on the ephemeral FS and
+# vanish on redeploy; baked-in plugins are permanent. entrypoint's upgrade.php
+# registers its capabilities on boot.
+RUN git clone --depth 1 --branch MOODLE_502_STABLE \
+        https://github.com/moodle-an-hochschulen/moodle-theme_boost_union.git \
+        /var/www/html/public/theme/boost_union \
+    && rm -rf /var/www/html/public/theme/boost_union/.git
+
 # Entrypoint: builds config.php from env, points Apache at public/, installs/upgrades DB
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh \

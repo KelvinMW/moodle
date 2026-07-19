@@ -33,8 +33,9 @@ $CFG->dataroot = getenv('MOODLE_DATAROOT') ?: '/var/moodledata';
 $CFG->admin    = 'admin';
 $CFG->directorypermissions = 02777;
 
-// OneBoard brand theme (Boost child, ships in the image).
-$CFG->theme = getenv('MOODLE_THEME') ?: 'oneboard';
+// Default theme = stock Moodle Boost. Switch to boost_union (baked into the
+// image) or oneboard via Site admin → Appearance, or override with MOODLE_THEME.
+$CFG->theme = getenv('MOODLE_THEME') ?: 'boost';
 
 // Enable mobile web services so the OneBoard app can connect / log in.
 $CFG->enablemobilewebservice = 1;
