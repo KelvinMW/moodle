@@ -45,7 +45,7 @@ REDISPASSWORD=${{Redis.REDISPASSWORD}}
 | `MOODLE_DATAROOT` | no | `/var/moodledata` | must match the Volume mount |
 | `MOODLE_DB_PREFIX` | no | `mdl_` | |
 | `MOODLE_LANG` | no | `en` | |
-| `MOODLE_THEME` | no | `boost` | `boost` (stock), `boost_union`, or `oneboard` |
+| `MOODLE_THEME` | no | — (DB) | Pins the theme and **locks** the UI selector. Leave unset to pick in the UI. Values: `boost`, `boost_union`, `oneboard` |
 | `MOODLE_DEBUG` | no | — | `true` to show errors |
 
 > **Set `MOODLE_WWWROOT` to your final public URL before first install** — Moodle bakes the
@@ -74,7 +74,9 @@ every minute.
 
 ## 6. Themes
 
-The default theme is stock Moodle **Boost** (`MOODLE_THEME=boost`).
+The theme is stored in the DB and chosen in **Site admin → Appearance → Themes → Theme
+selector** (fresh installs default to stock **Boost**). Setting `MOODLE_THEME` in the
+environment pins it and **locks** the selector — leave it unset to change themes in the UI.
 
 **`theme_boost_union`** (branch `MOODLE_502_STABLE`) is baked into the image at build
 (`public/theme/boost_union`) so it survives redeploys — Railway's filesystem is ephemeral,

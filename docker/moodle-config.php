@@ -33,9 +33,13 @@ $CFG->dataroot = getenv('MOODLE_DATAROOT') ?: '/var/moodledata';
 $CFG->admin    = 'admin';
 $CFG->directorypermissions = 02777;
 
-// Default theme = stock Moodle Boost. Switch to boost_union (baked into the
-// image) or oneboard via Site admin → Appearance, or override with MOODLE_THEME.
-$CFG->theme = getenv('MOODLE_THEME') ?: 'boost';
+// Theme is managed in the DB (Site admin → Appearance → Themes) so the UI
+// selector stays editable. Only pin it here when MOODLE_THEME is explicitly
+// set — a value in config.php locks the selector ("cannot be changed because
+// it is set to ... in config.php"). Fresh installs default to stock boost.
+if (getenv('MOODLE_THEME')) {
+    $CFG->theme = getenv('MOODLE_THEME');
+}
 
 // Enable mobile web services so the OneBoard app can connect / log in.
 $CFG->enablemobilewebservice = 1;
